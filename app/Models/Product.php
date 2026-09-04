@@ -53,4 +53,13 @@ class Product extends Model
     {
         return $this->hasOne(ProductBarcode::class)->where('is_primary', true);
     }
+
+    public function getImageUrlAttribute(): ?string
+    {
+        if (! $this->image_path) {
+            return null;
+        }
+
+        return route('products.image', ['path' => $this->image_path]);
+    }
 }

@@ -30,6 +30,16 @@ class ProductController extends Controller
         return view('products.index', compact('products'));
     }
 
+    public function image(string $path)
+    {
+        abort_if(str_starts_with($path, '/') || str_contains($path, '..'), 404);
+        abort_unless(str_starts_with($path, 'products/'), 404);
+        abort_unless(Storage::disk('public')->exists($path), 404);
+
+        return response(Storage::disk('public')->get($path), 200)
+            ->header('Content-Type', Storage::disk('public')->mimeType($path) ?? 'application/octet-stream');
+    }
+
     public function create()
     {
         return view('products.create', $this->formData());

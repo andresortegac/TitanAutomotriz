@@ -26,6 +26,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/sales/{sale}/receipt', [SaleController::class, 'receipt'])->name('sales.receipt');
     Route::resource('sales', SaleController::class)->only(['index', 'create', 'store', 'show']);
     Route::resource('customers', CustomerController::class)->only(['index', 'create', 'store', 'edit', 'update']);
+    Route::get('/products/images/{path}', [ProductController::class, 'image'])->where('path', '.*')->name('products.image');
     Route::get('/products/lookup', ProductLookupController::class)->name('products.lookup');
     Route::resource('products', ProductController::class)->only(['index']);
     Route::resource('services', ServiceController::class)->only(['index']);

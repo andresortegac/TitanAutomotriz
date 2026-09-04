@@ -13,6 +13,8 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
+    public const PROTECTED_ADMIN_EMAIL = 'admin@ferreteria.com';
+
     /**
      * The attributes that are mass assignable.
      *
@@ -68,5 +70,10 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
+    }
+
+    public function isProtectedAdmin(): bool
+    {
+        return strtolower($this->email) === self::PROTECTED_ADMIN_EMAIL;
     }
 }
