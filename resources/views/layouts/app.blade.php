@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>@yield('title', 'POS Ferreteria')</title>
+    <style>
+        :root { --bg:#f4f6f8; --ink:#1f2937; --muted:#6b7280; --brand:#e50909; --brand2:#111827; --line:#d8dee6; --card:#fff; --warn:#b45309; --danger:#b91c1c; --sidebar:#050505; --sidebar-soft:#141414; --sidebar-line:#2a2a2a; }
+        * { box-sizing:border-box; } body { margin:0; font-family:Arial, Helvetica, sans-serif; background:var(--bg); color:var(--ink); }
+        a { color:inherit; text-decoration:none; } .shell { display:flex; min-height:100vh; }
+        .sidebar { width:286px; background:linear-gradient(180deg, #020202 0%, #111 52%, #050505 100%); color:#f8fafc; padding:14px 18px; position:fixed; inset:0 auto 0 0; height:100vh; overflow-y:auto; border-right:4px solid var(--brand); box-shadow:10px 0 30px rgba(0,0,0,.14); z-index:20; }
+        .brand-block { display:grid; gap:9px; padding:4px 6px 14px; margin-bottom:10px; border-bottom:1px solid var(--sidebar-line); }
+        .brand-logo { display:block; width:100%; max-width:150px; max-height:82px; object-fit:contain; object-position:left center; }
+        .brand { font-size:16px; font-weight:900; letter-spacing:.3px; line-height:1.1; text-transform:uppercase; }
+        .brand span { display:block; color:var(--brand); font-size:11px; margin-top:4px; }
+        .role { display:inline-flex; align-items:center; width:max-content; color:#fff; background:#b80707; border:1px solid #ff2b2b; font-size:12px; font-weight:800; padding:5px 9px; border-radius:999px; text-transform:uppercase; }
+        .nav { display:grid; gap:5px; }
+        .nav a, .logout { width:100%; min-height:36px; display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:7px; color:#e5e7eb; border:1px solid transparent; font-size:14px; font-weight:700; line-height:1.2; transition:background .18s ease, color .18s ease, border-color .18s ease, transform .18s ease; }
+        .nav a::before, .logout::before { content:""; width:6px; height:6px; border-radius:999px; background:#5b5b5b; flex:0 0 auto; }
+        .nav a:hover, .logout:hover { background:var(--sidebar-soft); border-color:#343434; color:#fff; transform:translateX(2px); }
+        .nav a:hover::before, .logout:hover::before, .nav .active::before { background:var(--brand); box-shadow:0 0 0 4px rgba(229,9,9,.18); }
+        .nav .active { background:#fff; color:#050505; border-color:#fff; box-shadow:inset 4px 0 0 var(--brand); }
+        .content { flex:1; min-width:0; margin-left:286px; } .topbar { display:flex; justify-content:space-between; align-items:center; padding:18px 28px; background:#fff; border-bottom:1px solid var(--line); box-shadow:0 1px 0 rgba(0,0,0,.03); }
+        .topbar strong { color:#111827; font-size:20px; } .topbar .muted { font-weight:700; }
+        .page { padding:28px; } .panel { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:18px; }
+        .grid { display:grid; gap:16px; } .grid-4 { grid-template-columns:repeat(4, minmax(0, 1fr)); } .grid-2 { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+        h1 { margin:0 0 18px; font-size:28px; } h2 { margin:0 0 12px; font-size:19px; } .metric { font-size:28px; font-weight:800; }
+        .muted { color:var(--muted); } .actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+        .btn { border:0; background:var(--brand); color:white; border-radius:6px; padding:10px 13px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; min-height:38px; }
+        .btn.secondary { background:var(--brand2); } .btn.light { background:#e5e7eb; color:#111827; } .btn.danger { background:var(--danger); }
+        table { width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+        th, td { padding:12px; border-bottom:1px solid var(--line); text-align:left; vertical-align:middle; } th { background:#eef2f7; font-size:13px; color:#374151; }
+        input, select, textarea { width:100%; border:1px solid var(--line); border-radius:6px; padding:10px 11px; font:inherit; background:white; }
+        label { display:grid; gap:6px; font-size:14px; font-weight:700; } textarea { min-height:86px; resize:vertical; }
+        .form-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14px; } .span-2 { grid-column:span 2; }
+        .alert { border-radius:6px; padding:11px 13px; margin-bottom:14px; } .success { background:#dcfce7; color:#166534; } .error { background:#fee2e2; color:#991b1b; }
+        .badge { display:inline-block; padding:4px 8px; border-radius:999px; background:#e5e7eb; font-size:12px; } .badge.warn { background:#fef3c7; color:var(--warn); }
+        .pagination { margin-top:14px; } .logout { background:transparent; text-align:left; cursor:pointer; font:inherit; }
+        @media (max-width: 900px) { .shell { display:block; } .sidebar { width:auto; height:auto; position:relative; inset:auto; overflow:visible; border-right:0; border-bottom:4px solid var(--brand); } .content { margin-left:0; } .brand-block { grid-template-columns:auto 1fr; align-items:center; } .brand-logo { max-width:130px; max-height:58px; } .nav { grid-template-columns:repeat(2, minmax(0, 1fr)); } .grid-4, .grid-2, .form-grid { grid-template-columns:1fr; } .span-2 { grid-column:auto; } .page { padding:18px; } }
+        @media (max-width: 560px) { .brand-block { grid-template-columns:1fr; } .nav { grid-template-columns:1fr; } .topbar { align-items:flex-start; gap:6px; flex-direction:column; padding:16px 18px; } }
+    </style>
+</head>
+<body>
+@auth
+    <div class="shell">
+        <aside class="sidebar">
+            <div class="brand-block">
+                <img class="brand-logo" src="{{ asset('images/titan-automotriz-logo.jpeg') }}" alt="Titan Automotriz">
+                <div>
+                    
+                    <div class="role">{{ auth()->user()->role }}</div>
+                </div>
+            </div>
+            <nav class="nav">
+                <a href="{{ route('dashboard') }}" @class(['active' => request()->routeIs('dashboard')])>Panel</a>
+                <a href="{{ route('sales.create') }}" @class(['active' => request()->routeIs('sales.create')])>Nueva venta</a>
+                <a href="{{ route('sales.index') }}" @class(['active' => request()->routeIs('sales.index', 'sales.show')])>Ventas</a>
+                <a href="{{ route('products.index') }}" @class(['active' => request()->routeIs('products.*')])>Productos</a>
+                <a href="{{ route('services.index') }}" @class(['active' => request()->routeIs('services.*')])>Servicios</a>
+                <a href="{{ route('customers.index') }}" @class(['active' => request()->routeIs('customers.*')])>Clientes</a>
+                @if(auth()->user()->isAdmin())
+                    <a href="{{ route('credits.index') }}" @class(['active' => request()->routeIs('credits.*')])>Creditos</a>
+                    <a href="{{ route('categories.index') }}" @class(['active' => request()->routeIs('categories.*')])>Categorias</a>
+                    <a href="{{ route('suppliers.index') }}" @class(['active' => request()->routeIs('suppliers.*')])>Proveedores</a>
+                    <a href="{{ route('expenses.index') }}" @class(['active' => request()->routeIs('expenses.*')])>Gastos</a>
+                    <a href="{{ route('users.index') }}" @class(['active' => request()->routeIs('users.*')])>Usuarios</a>
+                @endif
+                <form method="post" action="{{ route('logout') }}">
+                    @csrf
+                    <button class="logout" type="submit">Cerrar sesion</button>
+                </form>
+            </nav>
+        </aside>
+        <main class="content">
+            <div class="topbar">
+                <strong>@yield('title', 'Panel')</strong>
+                <span class="muted">{{ auth()->user()->name }}</span>
+            </div>
+            <div class="page">
+                @if(session('success')) <div class="alert success">{{ session('success') }}</div> @endif
+                @if($errors->any()) <div class="alert error">{{ $errors->first() }}</div> @endif
+                @yield('content')
+            </div>
+        </main>
+    </div>
+@else
+    @yield('content')
+@endauth
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        @if(session('success'))
+            Swal.fire({
+                icon: 'success',
+                title: 'Listo',
+                text: @json(session('success')),
+                confirmButtonColor: '#e50909',
+                timer: 2400,
+                timerProgressBar: true
+            });
+        @endif
+
+        @if($errors->any())
+            Swal.fire({
+                icon: 'error',
+                title: 'Revisa la informacion',
+                text: @json($errors->first()),
+                confirmButtonColor: '#e50909'
+            });
+        @endif
+
+        document.querySelectorAll('.swal-confirm').forEach((button) => {
+            button.addEventListener('click', (event) => {
+                event.preventDefault();
+
+                Swal.fire({
+                    icon: 'warning',
+                    title: button.dataset.title || 'Confirmar accion',
+                    text: button.dataset.text || 'Esta accion no se puede deshacer facilmente.',
+                    showCancelButton: true,
+                    confirmButtonText: button.dataset.confirm || 'Si, continuar',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#e50909',
+                    cancelButtonColor: '#6b7280',
+                    reverseButtons: true
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        button.closest('form').submit();
+                    }
+                });
+            });
+        });
+    });
+</script>
+</body>
+</html>
