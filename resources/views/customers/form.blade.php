@@ -11,26 +11,72 @@
     <label>Tributo<select name="tribute_code" required><option value="ZZ" @selected(old('tribute_code', $customer->tribute_code ?? 'ZZ') === 'ZZ')>No responsable de IVA (ZZ)</option><option value="01" @selected(old('tribute_code', $customer->tribute_code ?? '') === '01')>IVA (01)</option></select></label>
     <label>Responsabilidades DIAN<input name="responsibilities" value="{{ old('responsibilities', isset($customer) ? implode(', ', $customer->responsibilities ?? []) : 'R-99-PN') }}" placeholder="R-99-PN, O-13"></label>
     <label>País<input name="country_code" value="{{ old('country_code', $customer->country_code ?? 'CO') }}" maxlength="2" required></label>
-    <label>Buscar municipio<input type="search" id="municipalitySearch" placeholder="Escribe al menos 2 letras"></label>
-    <label>Municipio<select name="municipality_code" id="municipalityCode"><option value="{{ old('municipality_code', $customer->municipality_code ?? '') }}">{{ old('municipality_code', $customer->municipality_code ?? '') ? 'Código actual: '.old('municipality_code', $customer->municipality_code ?? '') : 'Busca y selecciona un municipio' }}</option></select></label>
+    @php($municipalityCode = old('municipality_code', $customer->municipality_code ?? ''))
+    <label class="municipality-field">Municipio
+        <input type="search" id="municipalitySearch" list="municipalityOptions" autocomplete="off" placeholder="Escribe al menos 2 letras para buscar" value="{{ $municipalityCode ? 'Código actual: '.$municipalityCode : '' }}">
+        <datalist id="municipalityOptions"></datalist>
+        <input type="hidden" name="municipality_code" id="municipalityCode" value="{{ $municipalityCode }}">
+        <small class="muted" id="municipalityHelp">Busca y selecciona un municipio de la lista.</small>
+    </label>
 </div><div class="actions" style="margin-top:14px;"><button class="btn">Guardar</button><a class="btn light" href="{{ route('customers.index') }}">Cancelar</a></div>
 <script>
 const municipalitySearch = document.getElementById('municipalitySearch');
 const municipalityCode = document.getElementById('municipalityCode');
+const municipalityOptions = document.getElementById('municipalityOptions');
+const municipalityHelp = document.getElementById('municipalityHelp');
 let municipalityTimer;
+
 municipalitySearch.addEventListener('input', () => {
     clearTimeout(municipalityTimer);
     const term = municipalitySearch.value.trim();
-    if (term.length < 2) return;
+    const selectedOption = Array.from(municipalityOptions.options)
+        .find((item) => item.value === municipalitySearch.value);
+
+    if (selectedOption) {
+        municipalityCode.value = selectedOption.dataset.code;
+        municipalityHelp.textContent = 'Municipio seleccionado.';
+        return;
+    }
+
+    municipalityCode.value = '';
+    municipalityOptions.innerHTML = '';
+
+    if (term.length < 2) {
+        municipalityHelp.textContent = 'Escribe al menos 2 letras para buscar.';
+        return;
+    }
+
     municipalityTimer = setTimeout(async () => {
-        municipalityCode.innerHTML = '<option>Buscando municipios...</option>';
+        municipalityHelp.textContent = 'Buscando municipios...';
+
         try {
             const response = await fetch(`{{ route('customers.municipalities') }}?search=${encodeURIComponent(term)}`, { headers: { Accept: 'application/json' } });
+            if (!response.ok) throw new Error('Municipalities request failed');
+
             const municipalities = await response.json();
-            municipalityCode.innerHTML = '<option value="">Selecciona un municipio</option>' + municipalities.map(m => `<option value="${m.code}">${m.name} — ${m.department} (${m.code})</option>`).join('');
+            municipalityOptions.innerHTML = municipalities.map((municipality) => {
+                const label = `${municipality.name} — ${municipality.department} (${municipality.code})`;
+                return `<option value="${label}" data-code="${municipality.code}"></option>`;
+            }).join('');
+            municipalityHelp.textContent = municipalities.length
+                ? 'Selecciona un municipio de las sugerencias.'
+                : 'No se encontraron municipios con ese nombre.';
         } catch (_) {
-            municipalityCode.innerHTML = '<option value="">No fue posible consultar municipios</option>';
+            municipalityHelp.textContent = 'No fue posible consultar municipios. Intenta nuevamente.';
         }
     }, 250);
+});
+
+municipalitySearch.addEventListener('change', () => {
+    const option = Array.from(municipalityOptions.options).find((item) => item.value === municipalitySearch.value);
+
+    if (!option) {
+        municipalityCode.value = '';
+        if (municipalitySearch.value.trim()) municipalityHelp.textContent = 'Selecciona un municipio de las sugerencias.';
+        return;
+    }
+
+    municipalityCode.value = option.dataset.code;
+    municipalityHelp.textContent = 'Municipio seleccionado.';
 });
 </script>
