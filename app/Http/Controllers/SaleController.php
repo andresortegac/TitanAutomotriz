@@ -61,6 +61,19 @@ class SaleController extends Controller
             'items.*.product_id' => ['nullable', 'exists:products,id'],
             'items.*.service_id' => ['nullable', 'exists:services,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
+        ], [
+            'invoice_type.required' => 'Selecciona el tipo de factura.',
+            'payment_method.required' => 'Selecciona el método de pago.',
+            'credit_due_date.required_if' => 'Indica la fecha de vencimiento del crédito.',
+            'paid_amount.required' => 'Indica el valor pagado.',
+            'paid_amount.numeric' => 'El valor pagado debe ser un número válido.',
+            'items.required' => 'Agrega al menos un producto o servicio a la venta.',
+            'items.min' => 'Agrega al menos un producto o servicio a la venta.',
+            'items.*.item_type.required' => 'Cada línea debe indicar si es producto o servicio.',
+            'items.*.product_id.exists' => 'Uno de los productos seleccionados ya no está disponible.',
+            'items.*.service_id.exists' => 'Uno de los servicios seleccionados ya no está disponible.',
+            'items.*.quantity.required' => 'Indica la cantidad de cada producto o servicio.',
+            'items.*.quantity.min' => 'La cantidad debe ser como mínimo 1.',
         ]);
 
         $discount = (float) ($data['discount'] ?? 0);

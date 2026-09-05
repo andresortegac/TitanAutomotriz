@@ -39,6 +39,7 @@
 let products = @json($productOptions);
 let services = @json($serviceOptions);
 let index = 0;
+let paidAmountEdited = false;
 function money(value) { return '$' + Math.round(value).toLocaleString('es-CO'); }
 function productLabel(product) {
     const reference = product.barcode || product.sku || product.code;
@@ -78,11 +79,19 @@ function calculate() {
     });
     const discount = parseFloat(document.getElementById('discount').value || '0');
     const total = Math.max(subtotal - discount, 0) + tax;
-    const paid = parseFloat(document.getElementById('paid').value || '0');
+    const paymentMethod = document.getElementById('paymentMethod').value;
+    const paidInput = document.getElementById('paid');
+    if (paymentMethod !== 'credito' && !paidAmountEdited) {
+        paidInput.value = total.toFixed(2);
+    }
+    if (paymentMethod === 'credito' && !paidAmountEdited) {
+        paidInput.value = '0';
+    }
+    const paid = parseFloat(paidInput.value || '0');
     document.getElementById('subtotal').textContent = money(subtotal);
     document.getElementById('tax').textContent = money(tax);
     document.getElementById('total').textContent = money(total);
-    if (document.getElementById('paymentMethod').value === 'credito') {
+    if (paymentMethod === 'credito') {
         document.getElementById('changeLabel').textContent = 'Saldo';
         document.getElementById('change').textContent = money(Math.max(total - paid, 0));
     } else {
@@ -94,6 +103,8 @@ function toggleCreditFields() {
     const isCredit = document.getElementById('paymentMethod').value === 'credito';
     document.getElementById('creditDueField').style.display = isCredit ? 'grid' : 'none';
     document.getElementById('creditDueDate').required = isCredit;
+    if (!isCredit) paidAmountEdited = false;
+    calculate();
 }
 function toggleInvoiceType() {
     const electronic = document.getElementById('invoiceType').value === 'electronica';
@@ -183,6 +194,9 @@ document.getElementById('barcodeInput').addEventListener('keydown', function (ev
     scanProduct(code);
 });
 document.getElementById('barcodeInput').focus();
+document.getElementById('paid').addEventListener('input', () => {
+    paidAmountEdited = true;
+});
 addItem();
 toggleCreditFields();
 toggleInvoiceType();

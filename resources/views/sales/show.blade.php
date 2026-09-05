@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Factura')
 @section('content')
-<div class="actions" style="justify-content:space-between;margin-bottom:14px;"><h1>Factura {{ $sale->invoice_number }}</h1><div class="actions"><a class="btn" href="{{ route('sales.receipt', $sale) }}" target="_blank">Imprimir tirilla</a><a class="btn light" href="{{ route('sales.index') }}">Volver</a></div></div>
+<div class="actions" style="justify-content:space-between;margin-bottom:14px;"><h1>Factura {{ $sale->invoice_number }}</h1><div class="actions"><a class="btn" href="{{ route('sales.receipt', ['sale' => $sale, 'print' => 1]) }}" target="_blank">Imprimir factura</a><a class="btn light" href="{{ route('sales.index') }}">Volver</a></div></div>
 <div class="panel">
     <p><strong>Cliente:</strong> {{ $sale->customer->name ?? 'Consumidor final' }}</p>
     <p><strong>Vendedor:</strong> {{ $sale->user->name }} | <strong>Fecha:</strong> {{ $sale->created_at->format('d/m/Y H:i') }} | <strong>Estado:</strong> {{ $sale->status }}</p>
