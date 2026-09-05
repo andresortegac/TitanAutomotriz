@@ -13,35 +13,76 @@
     <label class="span-2">País<input name="country_code" value="{{ old('country_code', $customer->country_code ?? 'CO') }}" maxlength="2" required></label>
     @php($municipalityCode = old('municipality_code', $customer->municipality_code ?? ''))
     <label class="municipality-field">Municipio
-        <input type="search" id="municipalityFilter" autocomplete="off" placeholder="Escribe para filtrar municipios" aria-controls="municipalityCode">
-        <select name="municipality_code" id="municipalityCode" required>
-            <option value="">Selecciona el municipio</option>
-            @foreach($municipalities as $municipality)
-                <option value="{{ $municipality->code }}" @selected($municipalityCode === $municipality->code)>{{ $municipality->name }} — {{ $municipality->department }}</option>
-            @endforeach
-        </select>
-        <small class="muted" id="municipalityHelp">Escribe el nombre del municipio y selecciónalo de la lista filtrada.</small>
+        <div class="municipality-combobox">
+            <input type="search" id="municipalitySearch" autocomplete="off" placeholder="Selecciona o escribe el municipio" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="municipalityResults">
+            <input type="hidden" name="municipality_code" id="municipalityCode" value="{{ $municipalityCode }}">
+            <div id="municipalityResults" class="municipality-results" role="listbox" hidden></div>
+        </div>
+        <small class="muted" id="municipalityHelp">Escribe para filtrar y selecciona un municipio de la lista.</small>
     </label>
 </div><div class="actions" style="margin-top:14px;"><button class="btn">Guardar</button><a class="btn light" href="{{ route('customers.index') }}">Cancelar</a></div>
 <script>
-const municipalityFilter = document.getElementById('municipalityFilter');
-const municipalitySelect = document.getElementById('municipalityCode');
-const municipalityOptions = Array.from(municipalitySelect.options).map((option) => ({
-    value: option.value,
-    text: option.textContent,
-    selected: option.selected,
-}));
+const municipalitySearch = document.getElementById('municipalitySearch');
+const municipalityCode = document.getElementById('municipalityCode');
+const municipalityResults = document.getElementById('municipalityResults');
+const municipalityHelp = document.getElementById('municipalityHelp');
+const municipalityOptions = @json($municipalities->map(fn ($municipality) => [
+    'code' => $municipality->code,
+    'name' => $municipality->name,
+    'department' => $municipality->department,
+]));
 
 const normalize = (value) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const municipalityLabel = (municipality) => `${municipality.name} — ${municipality.department}`;
 
-municipalityFilter.addEventListener('input', () => {
-    const term = normalize(municipalityFilter.value.trim());
-    const selectedValue = municipalitySelect.value;
-    const matches = municipalityOptions.filter((option) => !term || !option.value || normalize(option.text).includes(term));
+const hideMunicipalityResults = () => {
+    municipalityResults.hidden = true;
+    municipalitySearch.setAttribute('aria-expanded', 'false');
+};
 
-    municipalitySelect.replaceChildren(...matches.map((option) => {
-        const element = new Option(option.text, option.value, false, option.value === selectedValue || (!selectedValue && option.selected));
-        return element;
+const selectMunicipality = (municipality) => {
+    municipalitySearch.value = municipalityLabel(municipality);
+    municipalityCode.value = municipality.code;
+    municipalityHelp.textContent = 'Municipio seleccionado.';
+    hideMunicipalityResults();
+};
+
+const renderMunicipalities = (term = '') => {
+    const matches = municipalityOptions
+        .filter((municipality) => !term || normalize(municipalityLabel(municipality)).includes(term))
+        .slice(0, 60);
+
+    municipalityResults.replaceChildren(...matches.map((municipality) => {
+        const option = document.createElement('button');
+        option.type = 'button';
+        option.className = 'municipality-option';
+        option.setAttribute('role', 'option');
+        option.textContent = municipalityLabel(municipality);
+        option.addEventListener('click', () => selectMunicipality(municipality));
+        return option;
     }));
+
+    municipalityResults.hidden = matches.length === 0;
+    municipalitySearch.setAttribute('aria-expanded', matches.length ? 'true' : 'false');
+    municipalityHelp.textContent = matches.length
+        ? 'Selecciona un municipio de la lista.'
+        : 'No se encontraron municipios.';
+};
+
+const selectedMunicipality = municipalityOptions.find((municipality) => municipality.code === municipalityCode.value);
+if (selectedMunicipality) municipalitySearch.value = municipalityLabel(selectedMunicipality);
+
+municipalitySearch.addEventListener('focus', () => {
+    municipalitySearch.select();
+    renderMunicipalities(normalize(municipalitySearch.value.trim()));
+});
+
+municipalitySearch.addEventListener('input', () => {
+    municipalityCode.value = '';
+    renderMunicipalities(normalize(municipalitySearch.value.trim()));
+});
+
+municipalitySearch.addEventListener('blur', () => {
+    setTimeout(hideMunicipalityResults, 150);
 });
 </script>

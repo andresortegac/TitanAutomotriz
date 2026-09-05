@@ -43,7 +43,7 @@
         input, select, textarea { width:100%; border:1px solid var(--line); border-radius:6px; padding:10px 11px; font:inherit; background:white; }
         label { display:grid; gap:6px; font-size:14px; font-weight:700; } textarea { min-height:86px; resize:vertical; }
         .form-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14px; } .span-2 { grid-column:span 2; }
-        .municipality-field { grid-column:span 2; }
+        .municipality-field { grid-column:span 2; } .municipality-combobox { position:relative; } .municipality-results { position:absolute; z-index:10; top:calc(100% + 4px); width:100%; max-height:260px; overflow-y:auto; border:1px solid var(--line); border-radius:6px; background:#fff; box-shadow:0 8px 18px rgba(15,23,42,.15); } .municipality-option { display:block; width:100%; padding:10px 11px; border:0; border-bottom:1px solid var(--line); background:#fff; color:var(--ink); font:inherit; text-align:left; cursor:pointer; } .municipality-option:last-child { border-bottom:0; } .municipality-option:hover, .municipality-option:focus { background:#fef2f2; outline:0; }
         .alert { border-radius:6px; padding:11px 13px; margin-bottom:14px; } .success { background:#dcfce7; color:#166534; } .error { background:#fee2e2; color:#991b1b; }
         .badge { display:inline-block; padding:4px 8px; border-radius:999px; background:#e5e7eb; font-size:12px; } .badge.warn { background:#fef3c7; color:var(--warn); }
         .pagination { margin-top:14px; } .logout { background:transparent; text-align:left; cursor:pointer; font:inherit; }
