@@ -65,6 +65,10 @@ class SaleController extends Controller
 
         $discount = (float) ($data['discount'] ?? 0);
 
+        if ($data['invoice_type'] === 'electronica' && empty($data['customer_id'])) {
+            return back()->withInput()->withErrors('Para facturar electrónicamente debes seleccionar un cliente.');
+        }
+
         try {
             $sale = DB::transaction(function () use ($data, $discount) {
                 $subtotal = 0;

@@ -11,5 +11,26 @@
     <label>Tributo<select name="tribute_code" required><option value="ZZ" @selected(old('tribute_code', $customer->tribute_code ?? 'ZZ') === 'ZZ')>No responsable de IVA (ZZ)</option><option value="01" @selected(old('tribute_code', $customer->tribute_code ?? '') === '01')>IVA (01)</option></select></label>
     <label>Responsabilidades DIAN<input name="responsibilities" value="{{ old('responsibilities', isset($customer) ? implode(', ', $customer->responsibilities ?? []) : 'R-99-PN') }}" placeholder="R-99-PN, O-13"></label>
     <label>País<input name="country_code" value="{{ old('country_code', $customer->country_code ?? 'CO') }}" maxlength="2" required></label>
-    <label>Municipio (código DANE)<input name="municipality_code" value="{{ old('municipality_code', $customer->municipality_code ?? '') }}" placeholder="Ej. 11001"></label>
+    <label>Buscar municipio<input type="search" id="municipalitySearch" placeholder="Escribe al menos 2 letras"></label>
+    <label>Municipio<select name="municipality_code" id="municipalityCode"><option value="{{ old('municipality_code', $customer->municipality_code ?? '') }}">{{ old('municipality_code', $customer->municipality_code ?? '') ? 'Código actual: '.old('municipality_code', $customer->municipality_code ?? '') : 'Busca y selecciona un municipio' }}</option></select></label>
 </div><div class="actions" style="margin-top:14px;"><button class="btn">Guardar</button><a class="btn light" href="{{ route('customers.index') }}">Cancelar</a></div>
+<script>
+const municipalitySearch = document.getElementById('municipalitySearch');
+const municipalityCode = document.getElementById('municipalityCode');
+let municipalityTimer;
+municipalitySearch.addEventListener('input', () => {
+    clearTimeout(municipalityTimer);
+    const term = municipalitySearch.value.trim();
+    if (term.length < 2) return;
+    municipalityTimer = setTimeout(async () => {
+        municipalityCode.innerHTML = '<option>Buscando municipios...</option>';
+        try {
+            const response = await fetch(`{{ route('customers.municipalities') }}?search=${encodeURIComponent(term)}`, { headers: { Accept: 'application/json' } });
+            const municipalities = await response.json();
+            municipalityCode.innerHTML = '<option value="">Selecciona un municipio</option>' + municipalities.map(m => `<option value="${m.code}">${m.name} — ${m.department} (${m.code})</option>`).join('');
+        } catch (_) {
+            municipalityCode.innerHTML = '<option value="">No fue posible consultar municipios</option>';
+        }
+    }, 250);
+});
+</script>

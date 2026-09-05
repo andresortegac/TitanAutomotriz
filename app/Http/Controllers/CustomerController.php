@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 
 class CustomerController extends Controller
 {
@@ -45,6 +47,42 @@ class CustomerController extends Controller
         $customer->delete();
 
         return back()->with('success', 'Cliente eliminado.');
+    }
+
+    public function municipalities(Request $request)
+    {
+        $term = trim((string) $request->query('search'));
+
+        if (mb_strlen($term) < 2) {
+            return response()->json([]);
+        }
+
+        $municipalities = Cache::remember('dane.municipalities.'.md5(mb_strtolower($term)), now()->addDays(7), function () use ($term) {
+            $where = "UPPER(MPIO_CNMBRE) LIKE '%".str_replace("'", "''", mb_strtoupper($term))."%'";
+            $response = Http::timeout(8)->get('https://geoportal.dane.gov.co/mparcgis/rest/services/MMRA2025/Serv_CapasMMRA_2025/MapServer/317/query', [
+                'where' => $where,
+                'outFields' => 'MPIO_CDPMP,MPIO_CNMBRE,DPTO_CNMBRE',
+                'returnGeometry' => 'false',
+                'resultRecordCount' => 30,
+                'f' => 'json',
+            ]);
+
+            if ($response->failed()) {
+                return [];
+            }
+
+            return collect($response->json('features', []))->map(function ($feature) {
+                $attributes = $feature['attributes'] ?? [];
+
+                return [
+                    'code' => (string) ($attributes['MPIO_CDPMP'] ?? ''),
+                    'name' => $attributes['MPIO_CNMBRE'] ?? '',
+                    'department' => $attributes['DPTO_CNMBRE'] ?? '',
+                ];
+            })->filter(fn ($municipality) => $municipality['code'] && $municipality['name'])->values()->all();
+        });
+
+        return response()->json($municipalities);
     }
 
     private function validated(Request $request): array

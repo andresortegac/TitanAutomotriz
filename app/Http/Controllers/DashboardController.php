@@ -6,12 +6,13 @@ use App\Models\Product;
 use App\Models\Sale;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
 {
     public function index()
     {
-        return view('dashboard', [
+        $metrics = Cache::remember('dashboard.metrics', now()->addSeconds(30), fn () => [
             'todaySales' => Sale::whereDate('created_at', today())->sum('total'),
             'monthSales' => Sale::whereMonth('created_at', now()->month)
                 ->whereYear('created_at', now()->year)
@@ -27,5 +28,7 @@ class DashboardController extends Controller
                 ->take(5)
                 ->get(),
         ]);
+
+        return view('dashboard', $metrics);
     }
 }
