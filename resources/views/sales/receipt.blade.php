@@ -120,6 +120,10 @@
         <div class="line"></div>
 
         <div class="row"><span>Factura:</span><strong>{{ $sale->invoice_number }}</strong></div>
+        @if($sale->invoice_type === 'electronica')
+            <div class="row"><span>Electrónica:</span><strong>{{ $sale->electronic_number ?: 'En proceso' }}</strong></div>
+            @if($sale->electronic_cufe)<div style="overflow-wrap:anywhere;font-size:9px;">CUFE: {{ $sale->electronic_cufe }}</div>@endif
+        @endif
         <div class="row"><span>Fecha:</span><span>{{ $sale->created_at->format('d/m/Y H:i') }}</span></div>
         <div class="row"><span>Vendedor:</span><span>{{ $sale->user->name }}</span></div>
         <div class="row"><span>Cliente:</span><span>{{ $sale->customer->name ?? 'Consumidor final' }}</span></div>

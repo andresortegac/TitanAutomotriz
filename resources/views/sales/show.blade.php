@@ -5,6 +5,12 @@
 <div class="panel">
     <p><strong>Cliente:</strong> {{ $sale->customer->name ?? 'Consumidor final' }}</p>
     <p><strong>Vendedor:</strong> {{ $sale->user->name }} | <strong>Fecha:</strong> {{ $sale->created_at->format('d/m/Y H:i') }} | <strong>Estado:</strong> {{ $sale->status }}</p>
+    <p><strong>Tipo:</strong> {{ $sale->invoice_type === 'electronica' ? 'Factura electrónica' : 'Factura normal' }}</p>
+    @if($sale->invoice_type === 'electronica')
+        <p><strong>Factura electrónica:</strong> {{ $sale->electronic_number ?: 'En proceso' }} | <strong>Estado DIAN:</strong> {{ $sale->electronic_status ?: 'Pendiente' }}</p>
+        @if($sale->electronic_cufe)<p><strong>CUFE:</strong> <span style="overflow-wrap:anywhere;">{{ $sale->electronic_cufe }}</span></p>@endif
+        @if($sale->electronic_qr_url)<p><a class="btn" href="{{ $sale->electronic_qr_url }}" target="_blank" rel="noopener">Consultar factura electrónica</a></p>@endif
+    @endif
     @if($sale->payment_method === 'credito')
         <p><strong>Credito:</strong> {{ ucfirst($sale->credit_status) }} | <strong>Vence:</strong> {{ $sale->credit_due_date?->format('d/m/Y') }} | <strong>Saldo:</strong> ${{ number_format($sale->balance, 0) }}</p>
     @endif

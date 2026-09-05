@@ -5,10 +5,12 @@
 <form class="panel" method="post" action="{{ route('sales.store') }}" id="saleForm">
     @csrf
     <div class="form-grid">
+        <label>Tipo de factura<select name="invoice_type" id="invoiceType" required onchange="toggleInvoiceType()"><option value="normal" @selected(old('invoice_type') === 'normal')>Factura normal</option><option value="electronica" @selected(old('invoice_type') === 'electronica')>Factura electrónica</option></select></label>
         <label>Cliente<select name="customer_id" id="customerId"><option value="">Consumidor final</option>@foreach($customers as $customer)<option value="{{ $customer->id }}">{{ $customer->name }} {{ $customer->document ? '- '.$customer->document : '' }}</option>@endforeach</select></label>
         <label>Metodo de pago<select name="payment_method" id="paymentMethod" required onchange="toggleCreditFields();calculate()"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="tarjeta">Tarjeta</option><option value="mixto">Mixto</option><option value="credito">Credito</option></select></label>
         <label id="creditDueField" style="display:none;">Fecha vencimiento credito<input type="date" name="credit_due_date" id="creditDueDate" value="{{ now()->addDays(30)->format('Y-m-d') }}"></label>
     </div>
+    <p class="muted" id="electronicNotice" style="display:none;margin-top:10px;">La factura electrónica se enviará a Factus. El cliente es obligatorio y debe tener sus datos fiscales completos.</p>
     <div class="panel" style="margin-top:18px;background:#111;color:#fff;border-color:#ef1d25;">
         <label>Escanear o escribir codigo
             <input id="barcodeInput" autocomplete="off" placeholder="Escanea el codigo y presiona Enter" style="margin-top:8px;">
@@ -92,6 +94,11 @@ function toggleCreditFields() {
     const isCredit = document.getElementById('paymentMethod').value === 'credito';
     document.getElementById('creditDueField').style.display = isCredit ? 'grid' : 'none';
     document.getElementById('creditDueDate').required = isCredit;
+}
+function toggleInvoiceType() {
+    const electronic = document.getElementById('invoiceType').value === 'electronica';
+    document.getElementById('customerId').required = electronic;
+    document.getElementById('electronicNotice').style.display = electronic ? 'block' : 'none';
 }
 function setScanMessage(message, type = 'ok') {
     const scanMessage = document.getElementById('scanMessage');
@@ -177,5 +184,6 @@ document.getElementById('barcodeInput').addEventListener('keydown', function (ev
 document.getElementById('barcodeInput').focus();
 addItem();
 toggleCreditFields();
+toggleInvoiceType();
 </script>
 @endsection

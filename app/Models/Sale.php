@@ -21,6 +21,12 @@ class Sale extends Model
         'credit_status',
         'payment_method',
         'status',
+        'invoice_type',
+        'electronic_number',
+        'electronic_cufe',
+        'electronic_qr_url',
+        'electronic_status',
+        'electronic_response',
     ];
 
     protected $casts = [
@@ -32,6 +38,7 @@ class Sale extends Model
         'change_amount' => 'decimal:2',
         'balance' => 'decimal:2',
         'credit_due_date' => 'date',
+        'electronic_response' => 'array',
     ];
 
     public function user()

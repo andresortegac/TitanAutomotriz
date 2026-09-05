@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\Service;
+use App\Services\FactusService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -50,6 +51,7 @@ class SaleController extends Controller
     {
         $data = $request->validate([
             'customer_id' => ['nullable', 'exists:customers,id'],
+            'invoice_type' => ['required', 'in:normal,electronica'],
             'payment_method' => ['required', 'in:efectivo,transferencia,tarjeta,mixto,credito'],
             'credit_due_date' => ['nullable', 'date', 'required_if:payment_method,credito'],
             'discount' => ['nullable', 'numeric', 'min:0'],
@@ -140,6 +142,10 @@ class SaleController extends Controller
                     throw new \RuntimeException('Para vender a credito debes seleccionar un cliente.');
                 }
 
+                if ($data['invoice_type'] === 'electronica' && empty($data['customer_id'])) {
+                    throw new \RuntimeException('Para facturar electrónicamente debes seleccionar un cliente.');
+                }
+
                 if (! $isCredit && $paidAmount < $total) {
                     throw new \RuntimeException('El valor pagado es menor que el total.');
                 }
@@ -158,6 +164,7 @@ class SaleController extends Controller
 
                 $sale = Sale::create([
                     'invoice_number' => 'FV-'.now()->format('YmdHis').'-'.auth()->id(),
+                    'invoice_type' => $data['invoice_type'],
                     'user_id' => auth()->id(),
                     'customer_id' => $data['customer_id'] ?? null,
                     'subtotal' => $subtotal,
@@ -189,6 +196,19 @@ class SaleController extends Controller
                     if ($item['product']) {
                         $item['product']->decrement('stock', $item['quantity']);
                     }
+                }
+
+                if ($sale->invoice_type === 'electronica') {
+                    $sale->load(['customer', 'items.product', 'items.service']);
+                    $response = app(FactusService::class)->issue($sale);
+                    $electronic = data_get($response, 'data', []);
+                    $sale->update([
+                        'electronic_number' => data_get($electronic, 'number'),
+                        'electronic_cufe' => data_get($electronic, 'cufe'),
+                        'electronic_qr_url' => data_get($electronic, 'qr_url') ?: data_get($electronic, 'public_url'),
+                        'electronic_status' => data_get($electronic, 'is_validated') ? 'validada' : (data_get($electronic, 'status') ?: 'registrada'),
+                        'electronic_response' => $response,
+                    ]);
                 }
 
                 return $sale;

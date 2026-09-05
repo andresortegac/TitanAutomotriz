@@ -55,6 +55,20 @@ class CustomerController extends Controller
             'phone' => ['nullable', 'string', 'max:50'],
             'email' => ['nullable', 'email', 'max:255'],
             'address' => ['nullable', 'string', 'max:255'],
+            'identification_document_code' => ['required', 'string', 'max:5'],
+            'dv' => ['nullable', 'string', 'max:2'],
+            'legal_organization_code' => ['required', 'in:1,2'],
+            'trade_name' => ['nullable', 'string', 'max:255'],
+            'tribute_code' => ['required', 'string', 'max:20'],
+            'responsibilities' => ['nullable', 'string', 'max:255'],
+            'country_code' => ['required', 'string', 'size:2'],
+            'municipality_code' => ['nullable', 'string', 'max:10'],
         ]);
+
+        $data['responsibilities'] = array_values(array_filter(array_map(
+            'trim', explode(',', $data['responsibilities'] ?? 'R-99-PN')
+        )));
+
+        return $data;
     }
 }
