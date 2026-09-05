@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\Sale;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Response;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -13,16 +15,17 @@ class FactusService
     public function issue(Sale $sale): array
     {
         $token = $this->accessToken();
-        $response = Http::acceptJson()
-            ->withToken($token)
-            ->timeout(30)
-            ->post($this->baseUrl().'/v2/bills/validate', $this->payload($sale));
+        try {
+            $response = Http::acceptJson()
+                ->withToken($token)
+                ->timeout(30)
+                ->post($this->baseUrl().'/v2/bills/validate', $this->payload($sale));
+        } catch (ConnectionException $exception) {
+            throw new RuntimeException('No fue posible conectar con Factus. Intenta nuevamente.');
+        }
 
         if ($response->failed()) {
-            $message = data_get($response->json(), 'message')
-                ?: data_get($response->json(), 'errors.0.message')
-                ?: 'Factus no pudo validar la factura electrónica.';
-            throw new RuntimeException($message);
+            throw new RuntimeException($this->errorMessage($response));
         }
 
         return $response->json();
@@ -51,6 +54,25 @@ class FactusService
 
             return $response->json('access_token');
         });
+    }
+
+    private function errorMessage(Response $response): string
+    {
+        $payload = $response->json() ?: [];
+        $message = data_get($payload, 'message') ?: 'Factus no pudo validar la factura electrónica.';
+        $details = collect(Arr::flatten(data_get($payload, 'errors', [])))
+            ->filter(fn ($error) => is_scalar($error))
+            ->map(fn ($error) => (string) $error)
+            ->filter()
+            ->unique()
+            ->take(3)
+            ->implode(' ');
+
+        if ($details && ! str_contains(mb_strtolower($message), mb_strtolower($details))) {
+            return $message.': '.$details;
+        }
+
+        return $message;
     }
 
     private function payload(Sale $sale): array
