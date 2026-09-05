@@ -82,6 +82,15 @@ class SaleController extends Controller
             return back()->withInput()->withErrors('Para facturar electrónicamente debes seleccionar un cliente.');
         }
 
+        if ($data['invoice_type'] === 'electronica') {
+            $customer = Customer::find($data['customer_id']);
+            $missingFields = $this->missingElectronicCustomerFields($customer);
+
+            if ($missingFields) {
+                return back()->withInput()->withErrors('Completa los datos fiscales del cliente antes de facturar electrónicamente: '.implode(', ', $missingFields).'.');
+            }
+        }
+
         try {
             $sale = DB::transaction(function () use ($data, $discount) {
                 $subtotal = 0;
@@ -264,5 +273,36 @@ class SaleController extends Controller
         });
 
         return back()->with('success', 'Venta anulada y stock restaurado.');
+    }
+
+    private function missingElectronicCustomerFields(?Customer $customer): array
+    {
+        if (! $customer) {
+            return ['cliente'];
+        }
+
+        $fields = [
+            'name' => 'nombre o razón social',
+            'document' => 'documento',
+            'identification_document_code' => 'tipo de documento',
+            'legal_organization_code' => 'tipo de persona',
+            'tribute_code' => 'tributo',
+            'country_code' => 'país',
+            'municipality_code' => 'municipio',
+            'address' => 'dirección',
+            'email' => 'correo',
+            'phone' => 'teléfono',
+        ];
+
+        $missing = collect($fields)
+            ->filter(fn ($label, $field) => blank($customer->{$field}))
+            ->values()
+            ->all();
+
+        if (empty($customer->responsibilities)) {
+            $missing[] = 'responsabilidades DIAN';
+        }
+
+        return $missing;
     }
 }

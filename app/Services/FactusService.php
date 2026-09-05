@@ -8,6 +8,7 @@ use Illuminate\Http\Client\Response;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class FactusService
@@ -25,6 +26,13 @@ class FactusService
         }
 
         if ($response->failed()) {
+            Log::warning('Factus rechazó una factura electrónica.', [
+                'sale_id' => $sale->id,
+                'invoice_number' => $sale->invoice_number,
+                'http_status' => $response->status(),
+                'response' => $response->json() ?: $response->body(),
+            ]);
+
             throw new RuntimeException($this->errorMessage($response));
         }
 
