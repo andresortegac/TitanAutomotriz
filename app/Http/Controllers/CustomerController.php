@@ -7,6 +7,7 @@ use App\Models\Municipality;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class CustomerController extends Controller
@@ -124,6 +125,10 @@ class CustomerController extends Controller
 
     private function municipalitiesList()
     {
+        if (! Schema::hasTable('municipalities')) {
+            return collect();
+        }
+
         return Municipality::query()
             ->orderBy('name')
             ->orderBy('department')
