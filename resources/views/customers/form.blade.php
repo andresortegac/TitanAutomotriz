@@ -16,6 +16,11 @@
         <div class="municipality-combobox">
             <input type="search" id="municipalitySearch" autocomplete="off" placeholder="Selecciona o escribe el municipio" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="municipalityResults">
             <input type="hidden" name="municipality_code" id="municipalityCode" value="{{ $municipalityCode }}">
+            <select id="municipalitySource" hidden aria-hidden="true" tabindex="-1">
+                @foreach($municipalities as $municipality)
+                    <option value="{{ $municipality->code }}" @selected($municipalityCode === $municipality->code)>{{ $municipality->name }} — {{ $municipality->department }}</option>
+                @endforeach
+            </select>
             <div id="municipalityResults" class="municipality-results" role="listbox" hidden></div>
         </div>
         <small class="muted" id="municipalityHelp">Escribe para filtrar y selecciona un municipio de la lista.</small>
@@ -26,14 +31,13 @@ const municipalitySearch = document.getElementById('municipalitySearch');
 const municipalityCode = document.getElementById('municipalityCode');
 const municipalityResults = document.getElementById('municipalityResults');
 const municipalityHelp = document.getElementById('municipalityHelp');
-const municipalityOptions = @json($municipalities->map(fn ($municipality) => [
-    'code' => $municipality->code,
-    'name' => $municipality->name,
-    'department' => $municipality->department,
-]));
+const municipalityOptions = Array.from(document.getElementById('municipalitySource').options).map((option) => ({
+    code: option.value,
+    text: option.textContent,
+}));
 
 const normalize = (value) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-const municipalityLabel = (municipality) => `${municipality.name} — ${municipality.department}`;
+const municipalityLabel = (municipality) => municipality.text;
 
 const hideMunicipalityResults = () => {
     municipalityResults.hidden = true;
