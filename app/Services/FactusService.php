@@ -67,8 +67,11 @@ class FactusService
     private function errorMessage(Response $response): string
     {
         $payload = $response->json() ?: [];
-        $message = data_get($payload, 'message') ?: 'Factus no pudo validar la factura electrónica.';
-        $details = collect(Arr::flatten(data_get($payload, 'errors', [])))
+        $message = data_get($payload, 'data.message')
+            ?: data_get($payload, 'message')
+            ?: 'Factus no pudo validar la factura electrónica.';
+        $errors = data_get($payload, 'data.errors') ?? data_get($payload, 'errors', []);
+        $details = collect(Arr::flatten($errors))
             ->filter(fn ($error) => is_scalar($error))
             ->map(fn ($error) => (string) $error)
             ->filter()
@@ -95,7 +98,7 @@ class FactusService
             'identification' => preg_replace('/[^0-9A-Za-z]/', '', $customer->document),
             'legal_organization_code' => $customer->legal_organization_code,
             'tribute_code' => $customer->tribute_code,
-            'responsibilities' => $customer->responsibilities ?: ['R-99-PN'],
+            'responsibilities' => $this->responsibilities($customer->responsibilities),
             'country_code' => $customer->country_code ?: 'CO',
             'address' => $customer->address,
             'email' => $customer->email,
@@ -122,12 +125,11 @@ class FactusService
             $remainingDiscount -= $discount;
             $reference = $item->product?->sku ?: $item->product?->code ?: $item->service?->code ?: 'ITEM-'.$item->id;
 
-            return [
+            $payloadItem = [
                 'code_reference' => $reference,
                 'name' => $item->product_name,
                 'quantity' => number_format((float) $item->quantity, 2, '.', ''),
                 'price' => number_format((float) $item->unit_price, 2, '.', ''),
-                'discount_amount' => number_format($discount, 2, '.', ''),
                 'unit_measure_code' => '94',
                 'standard_code' => '999',
                 'taxes' => [[
@@ -136,6 +138,13 @@ class FactusService
                     'is_excluded' => (float) $item->tax_rate === 0.0,
                 ]],
             ];
+
+            // Factus validates this field with a minimum of 0.01; omit it without a discount.
+            if (round($discount, 2) >= 0.01) {
+                $payloadItem['discount_amount'] = number_format($discount, 2, '.', '');
+            }
+
+            return $payloadItem;
         })->all();
 
         $payload = [
@@ -159,6 +168,27 @@ class FactusService
         }
 
         return $payload;
+    }
+
+    private function responsibilities(mixed $responsibilities): array
+    {
+        if (is_string($responsibilities)) {
+            $decoded = json_decode($responsibilities, true);
+            $responsibilities = is_array($decoded)
+                ? $decoded
+                : explode(',', $responsibilities);
+        }
+
+        if (! is_array($responsibilities)) {
+            return ['R-99-PN'];
+        }
+
+        $responsibilities = array_values(array_unique(array_filter(array_map(
+            fn ($responsibility) => is_scalar($responsibility) ? trim((string) $responsibility) : '',
+            $responsibilities
+        ))));
+
+        return $responsibilities ?: ['R-99-PN'];
     }
 
     private function paymentMethodCode(string $method): string
