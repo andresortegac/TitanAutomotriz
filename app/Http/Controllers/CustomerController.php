@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\Municipality;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -17,7 +18,7 @@ class CustomerController extends Controller
 
     public function create()
     {
-        return view('customers.create');
+        return view('customers.create', ['municipalities' => $this->municipalitiesList()]);
     }
 
     public function store(Request $request)
@@ -29,7 +30,10 @@ class CustomerController extends Controller
 
     public function edit(Customer $customer)
     {
-        return view('customers.edit', compact('customer'));
+        return view('customers.edit', [
+            'customer' => $customer,
+            'municipalities' => $this->municipalitiesList(),
+        ]);
     }
 
     public function update(Request $request, Customer $customer)
@@ -108,7 +112,7 @@ class CustomerController extends Controller
             'tribute_code' => ['required', 'string', 'max:20'],
             'responsibilities' => ['nullable', 'string', 'max:255'],
             'country_code' => ['required', 'string', 'size:2'],
-            'municipality_code' => ['nullable', 'string', 'max:10'],
+            'municipality_code' => ['required', 'exists:municipalities,code'],
         ]);
 
         $data['responsibilities'] = array_values(array_filter(array_map(
@@ -116,5 +120,13 @@ class CustomerController extends Controller
         )));
 
         return $data;
+    }
+
+    private function municipalitiesList()
+    {
+        return Municipality::query()
+            ->orderBy('name')
+            ->orderBy('department')
+            ->get(['code', 'name', 'department']);
     }
 }

@@ -13,94 +13,11 @@
     <label>País<input name="country_code" value="{{ old('country_code', $customer->country_code ?? 'CO') }}" maxlength="2" required></label>
     @php($municipalityCode = old('municipality_code', $customer->municipality_code ?? ''))
     <label class="municipality-field">Municipio
-        <input type="search" id="municipalitySearch" autocomplete="off" placeholder="Escribe al menos 2 letras para buscar" value="{{ $municipalityCode ? 'Código actual: '.$municipalityCode : '' }}" aria-describedby="municipalityHelp" aria-controls="municipalityResults" aria-expanded="false">
-        <input type="hidden" name="municipality_code" id="municipalityCode" value="{{ $municipalityCode }}">
-        <small class="muted" id="municipalityHelp">Busca y selecciona un municipio de la lista.</small>
+        <select name="municipality_code" required>
+            <option value="">Selecciona el municipio</option>
+            @foreach($municipalities as $municipality)
+                <option value="{{ $municipality->code }}" @selected($municipalityCode === $municipality->code)>{{ $municipality->name }} — {{ $municipality->department }}</option>
+            @endforeach
+        </select>
     </label>
-    <div id="municipalityResults" class="municipality-results" role="listbox" aria-label="Resultados de municipios" hidden></div>
 </div><div class="actions" style="margin-top:14px;"><button class="btn">Guardar</button><a class="btn light" href="{{ route('customers.index') }}">Cancelar</a></div>
-<script>
-const municipalitySearch = document.getElementById('municipalitySearch');
-const municipalityCode = document.getElementById('municipalityCode');
-const municipalityResults = document.getElementById('municipalityResults');
-const municipalityHelp = document.getElementById('municipalityHelp');
-let municipalityTimer;
-let municipalities = [];
-
-const hideMunicipalityResults = () => {
-    municipalityResults.hidden = true;
-    municipalitySearch.setAttribute('aria-expanded', 'false');
-};
-
-const selectMunicipality = (municipality) => {
-    municipalitySearch.value = `${municipality.name} — ${municipality.department} (${municipality.code})`;
-    municipalityCode.value = municipality.code;
-    municipalityHelp.textContent = 'Municipio seleccionado.';
-    hideMunicipalityResults();
-};
-
-const renderMunicipalities = () => {
-    municipalityResults.replaceChildren();
-
-    municipalities.forEach((municipality) => {
-        const option = document.createElement('button');
-        option.type = 'button';
-        option.className = 'municipality-option';
-        option.setAttribute('role', 'option');
-        option.textContent = `${municipality.name} — ${municipality.department} (${municipality.code})`;
-        option.addEventListener('click', () => selectMunicipality(municipality));
-        municipalityResults.appendChild(option);
-    });
-
-    municipalityResults.hidden = municipalities.length === 0;
-    municipalitySearch.setAttribute('aria-expanded', municipalities.length ? 'true' : 'false');
-};
-
-municipalitySearch.addEventListener('input', () => {
-    clearTimeout(municipalityTimer);
-    const term = municipalitySearch.value.trim();
-    const selectedMunicipality = municipalities.find((municipality) =>
-        `${municipality.name} — ${municipality.department} (${municipality.code})` === municipalitySearch.value
-    );
-
-    if (selectedMunicipality) {
-        municipalityCode.value = selectedMunicipality.code;
-        municipalityHelp.textContent = 'Municipio seleccionado.';
-        return;
-    }
-
-    municipalityCode.value = '';
-    municipalities = [];
-    renderMunicipalities();
-
-    if (term.length < 2) {
-        municipalityHelp.textContent = 'Escribe al menos 2 letras para buscar.';
-        return;
-    }
-
-    municipalityTimer = setTimeout(async () => {
-        municipalityHelp.textContent = 'Buscando municipios...';
-
-        try {
-            const response = await fetch(`{{ route('customers.municipalities') }}?search=${encodeURIComponent(term)}`, { headers: { Accept: 'application/json' } });
-            if (!response.ok) throw new Error('Municipalities request failed');
-
-            const results = await response.json();
-            if (municipalitySearch.value.trim() !== term) return;
-
-            municipalities = results;
-            renderMunicipalities();
-            municipalityHelp.textContent = municipalities.length
-                ? 'Selecciona un municipio de las sugerencias.'
-                : 'No se encontraron municipios con ese nombre.';
-        } catch (_) {
-            hideMunicipalityResults();
-            municipalityHelp.textContent = 'No fue posible consultar municipios. Intenta nuevamente.';
-        }
-    }, 250);
-});
-
-municipalitySearch.addEventListener('blur', () => {
-    setTimeout(hideMunicipalityResults, 150);
-});
-</script>
