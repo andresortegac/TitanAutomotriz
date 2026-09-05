@@ -6,6 +6,7 @@ use App\Models\Customer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 class CustomerController extends Controller
 {
@@ -58,18 +59,22 @@ class CustomerController extends Controller
         }
 
         $municipalities = Cache::remember('dane.municipalities.'.md5(mb_strtolower($term)), now()->addDays(7), function () use ($term) {
-            $where = "UPPER(MPIO_CNMBRE) LIKE '%".str_replace("'", "''", mb_strtoupper($term))."%'";
+            // The DANE service supports prefix matches; normalize accents locally
+            // so users can type "Medellin" and still find "MEDELLÍN".
+            $prefix = mb_substr(mb_strtoupper(Str::ascii($term)), 0, 2);
+            $where = "MPIO_CNMBRE LIKE '".str_replace("'", "''", $prefix)."%'";
             $response = Http::timeout(8)->get('https://geoportal.dane.gov.co/mparcgis/rest/services/MMRA2025/Serv_CapasMMRA_2025/MapServer/317/query', [
                 'where' => $where,
                 'outFields' => 'MPIO_CDPMP,MPIO_CNMBRE,DPTO_CNMBRE',
                 'returnGeometry' => 'false',
-                'resultRecordCount' => 30,
                 'f' => 'json',
             ]);
 
             if ($response->failed()) {
                 return [];
             }
+
+            $normalizedTerm = mb_strtolower(Str::ascii($term));
 
             return collect($response->json('features', []))->map(function ($feature) {
                 $attributes = $feature['attributes'] ?? [];
@@ -79,7 +84,10 @@ class CustomerController extends Controller
                     'name' => $attributes['MPIO_CNMBRE'] ?? '',
                     'department' => $attributes['DPTO_CNMBRE'] ?? '',
                 ];
-            })->filter(fn ($municipality) => $municipality['code'] && $municipality['name'])->values()->all();
+            })->filter(fn ($municipality) => $municipality['code']
+                && $municipality['name']
+                && str_contains(mb_strtolower(Str::ascii($municipality['name'])), $normalizedTerm)
+            )->take(30)->values()->all();
         });
 
         return response()->json($municipalities);
