@@ -20,6 +20,14 @@
         .nav a:hover, .logout:hover { background:var(--sidebar-soft); border-color:#343434; color:#fff; transform:translateX(2px); }
         .nav a:hover::before, .logout:hover::before, .nav .active::before { background:var(--brand); box-shadow:0 0 0 4px rgba(229,9,9,.18); }
         .nav .active { background:#fff; color:#050505; border-color:#fff; box-shadow:inset 4px 0 0 var(--brand); }
+        .menu-toggle { display:none; position:fixed; top:12px; left:12px; width:42px; height:42px; border:0; border-radius:8px; background:#111; color:#fff; cursor:pointer; z-index:40; box-shadow:0 8px 22px rgba(0,0,0,.22); }
+        .menu-toggle span, .menu-toggle::before, .menu-toggle::after { content:""; display:block; width:20px; height:2px; margin:5px auto; border-radius:999px; background:currentColor; transition:transform .18s ease, opacity .18s ease; }
+        .menu-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,.52); z-index:25; }
+        .menu-open { overflow:hidden; }
+        .menu-open .menu-toggle span { opacity:0; }
+        .menu-open .menu-toggle::before { transform:translateY(7px) rotate(45deg); }
+        .menu-open .menu-toggle::after { transform:translateY(-7px) rotate(-45deg); }
+        .menu-open .menu-backdrop { display:block; }
         .content { flex:1; min-width:0; margin-left:286px; } .topbar { display:flex; justify-content:space-between; align-items:center; padding:18px 28px; background:#fff; border-bottom:1px solid var(--line); box-shadow:0 1px 0 rgba(0,0,0,.03); }
         .topbar strong { color:#111827; font-size:20px; } .topbar .muted { font-weight:700; }
         .page { padding:28px; } .panel { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:18px; }
@@ -38,13 +46,15 @@
         .alert { border-radius:6px; padding:11px 13px; margin-bottom:14px; } .success { background:#dcfce7; color:#166534; } .error { background:#fee2e2; color:#991b1b; }
         .badge { display:inline-block; padding:4px 8px; border-radius:999px; background:#e5e7eb; font-size:12px; } .badge.warn { background:#fef3c7; color:var(--warn); }
         .pagination { margin-top:14px; } .logout { background:transparent; text-align:left; cursor:pointer; font:inherit; }
-        @media (max-width: 900px) { .shell { display:block; } .sidebar { width:auto; height:auto; position:relative; inset:auto; overflow:visible; border-right:0; border-bottom:4px solid var(--brand); } .content { margin-left:0; } .brand-block { grid-template-columns:auto 1fr; align-items:center; } .brand-logo { max-width:130px; max-height:58px; } .nav { grid-template-columns:repeat(2, minmax(0, 1fr)); } .grid-4, .grid-2, .form-grid { grid-template-columns:1fr; } .span-2 { grid-column:auto; } .page { padding:18px; } .panel { padding:14px; } table { display:block; max-width:100%; overflow-x:auto; white-space:nowrap; } .table-responsive table { display:table; min-width:720px; } }
-        @media (max-width: 560px) { .brand-block { grid-template-columns:1fr; } .nav { grid-template-columns:1fr; } .topbar { align-items:flex-start; gap:6px; flex-direction:column; padding:16px 18px; } .page { padding:14px; } .actions { align-items:stretch; } .actions .btn, .actions input, .actions form { width:100%; max-width:none !important; } h1 { font-size:24px; } }
+        @media (max-width: 900px) { .shell { display:block; } .menu-toggle { display:block; } .sidebar { width:min(82vw, 320px); height:100vh; position:fixed; inset:0 auto 0 0; overflow-y:auto; border-right:4px solid var(--brand); border-bottom:0; padding-top:68px; transform:translateX(-105%); transition:transform .22s ease; z-index:30; } .menu-open .sidebar { transform:translateX(0); } .content { margin-left:0; } .topbar { padding-left:68px; } .brand-block { grid-template-columns:1fr; align-items:center; } .brand-logo { max-width:150px; max-height:78px; } .nav { grid-template-columns:1fr; } .nav a, .logout { min-height:42px; font-size:16px; } .grid-4, .grid-2, .form-grid { grid-template-columns:1fr; } .span-2 { grid-column:auto; } .page { padding:18px; } .panel { padding:14px; } table { display:block; max-width:100%; overflow-x:auto; white-space:nowrap; } .table-responsive table { display:table; min-width:720px; } }
+        @media (max-width: 560px) { .topbar { align-items:flex-start; gap:6px; flex-direction:column; padding:16px 18px 16px 68px; } .page { padding:14px; } .actions { align-items:stretch; } .actions .btn, .actions input, .actions form { width:100%; max-width:none !important; } h1 { font-size:24px; } }
     </style>
 </head>
 <body>
 @auth
     <div class="shell">
+        <button class="menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false"><span></span></button>
+        <div class="menu-backdrop" data-menu-close></div>
         <aside class="sidebar">
             <div class="brand-block">
                 <img class="brand-logo" src="{{ asset('images/titan-automotriz-logo.jpeg') }}" alt="Titan Automotriz">
@@ -131,6 +141,28 @@
                     }
                 });
             });
+        });
+
+        const menuToggle = document.querySelector('.menu-toggle');
+        const menuCloseTargets = document.querySelectorAll('[data-menu-close], .nav a, .logout');
+        const setMenuOpen = (open) => {
+            document.body.classList.toggle('menu-open', open);
+            menuToggle?.setAttribute('aria-expanded', open ? 'true' : 'false');
+            menuToggle?.setAttribute('aria-label', open ? 'Cerrar menu' : 'Abrir menu');
+        };
+
+        menuToggle?.addEventListener('click', () => {
+            setMenuOpen(! document.body.classList.contains('menu-open'));
+        });
+
+        menuCloseTargets.forEach((target) => {
+            target.addEventListener('click', () => setMenuOpen(false));
+        });
+
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 900) {
+                setMenuOpen(false);
+            }
         });
     });
 </script>
