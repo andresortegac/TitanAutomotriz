@@ -94,7 +94,7 @@ function addItem(productId = '', unitPrice = null, quantity = 1) {
     const row = document.createElement('div');
     row.className = 'form-grid sale-item-grid';
     const price = unitPrice ?? defaultPrice(products, productId);
-    row.innerHTML = `<input type="hidden" name="items[${index}][item_type]" value="product"><label>Producto<select name="items[${index}][product_id]" onchange="syncRowPrice(this)" required><option value="">Seleccione</option>${products.map(p => `<option value="${p.id}" data-price="${p.price}" data-tax-rate="${p.tax_rate || 0}" data-stock="${p.stock}" ${String(p.id) === String(productId) ? 'selected' : ''}>${productLabel(p)}</option>`).join('')}</select></label><label>Precio unitario<input data-unit-price type="number" step="0.01" min="0.01" name="items[${index}][unit_price]" value="${price}" oninput="calculate()" required></label><label>Cantidad<input data-quantity type="number" min="1" name="items[${index}][quantity]" value="${quantity}" oninput="calculate()" required></label><button class="btn danger sale-item-remove" type="button" onclick="this.parentElement.remove();calculate()" aria-label="Quitar producto" title="Quitar producto"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M9 7l1-2h4l1 2m-8 0 1 13h8l1-13"/></svg></button>`;
+    row.innerHTML = `<input type="hidden" name="items[${index}][item_type]" value="product"><label>Producto<select name="items[${index}][product_id]" onchange="syncRowPrice(this)" required><option value="">Seleccione</option>${products.map(p => `<option value="${p.id}" data-price="${p.price}" data-tax-rate="${p.tax_rate || 0}" data-stock="${p.stock}" ${String(p.id) === String(productId) ? 'selected' : ''}>${productLabel(p)}</option>`).join('')}</select></label><label>Precio unitario<input data-unit-price type="number" step="0.01" min="0.01" name="items[${index}][unit_price]" value="${price}" oninput="calculate()" required></label><label>Cantidad<input data-quantity type="number" min="1" name="items[${index}][quantity]" value="${quantity}" oninput="calculate()" required></label><button class="btn danger sale-item-remove" type="button" onclick="confirmRemoveItem(this)" aria-label="Quitar producto" title="Quitar producto"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M9 7l1-2h4l1 2m-8 0 1 13h8l1-13"/></svg></button>`;
     document.getElementById('items').appendChild(row);
     index++;
     calculate();
@@ -104,7 +104,7 @@ function addServiceItem(serviceId = '', unitPrice = null, quantity = 1) {
     const row = document.createElement('div');
     row.className = 'form-grid sale-item-grid';
     const price = unitPrice ?? defaultPrice(services, serviceId);
-    row.innerHTML = `<input type="hidden" name="items[${index}][item_type]" value="service"><label>Servicio<select name="items[${index}][service_id]" onchange="syncRowPrice(this)" required><option value="">Seleccione</option>${services.map(s => `<option value="${s.id}" data-price="${s.price}" data-tax-rate="${s.tax_rate || 0}" ${String(s.id) === String(serviceId) ? 'selected' : ''}>${serviceLabel(s)}</option>`).join('')}</select></label><label>Precio unitario<input data-unit-price type="number" step="0.01" min="0.01" name="items[${index}][unit_price]" value="${price}" oninput="calculate()" required></label><label>Cantidad<input data-quantity type="number" min="1" name="items[${index}][quantity]" value="${quantity}" oninput="calculate()" required></label><button class="btn danger sale-item-remove" type="button" onclick="this.parentElement.remove();calculate()" aria-label="Quitar servicio" title="Quitar servicio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M9 7l1-2h4l1 2m-8 0 1 13h8l1-13"/></svg></button>`;
+    row.innerHTML = `<input type="hidden" name="items[${index}][item_type]" value="service"><label>Servicio<select name="items[${index}][service_id]" onchange="syncRowPrice(this)" required><option value="">Seleccione</option>${services.map(s => `<option value="${s.id}" data-price="${s.price}" data-tax-rate="${s.tax_rate || 0}" ${String(s.id) === String(serviceId) ? 'selected' : ''}>${serviceLabel(s)}</option>`).join('')}</select></label><label>Precio unitario<input data-unit-price type="number" step="0.01" min="0.01" name="items[${index}][unit_price]" value="${price}" oninput="calculate()" required></label><label>Cantidad<input data-quantity type="number" min="1" name="items[${index}][quantity]" value="${quantity}" oninput="calculate()" required></label><button class="btn danger sale-item-remove" type="button" onclick="confirmRemoveItem(this)" aria-label="Quitar servicio" title="Quitar servicio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M9 7l1-2h4l1 2m-8 0 1 13h8l1-13"/></svg></button>`;
     document.getElementById('items').appendChild(row);
     index++;
     calculate();
@@ -160,6 +160,31 @@ function setScanMessage(message, type = 'ok') {
     const scanMessage = document.getElementById('scanMessage');
     scanMessage.textContent = message;
     scanMessage.style.color = type === 'error' ? '#fecaca' : '#bbf7d0';
+}
+function confirmRemoveItem(button) {
+    const remove = () => {
+        button.parentElement.remove();
+        calculate();
+    };
+
+    if (! window.Swal) {
+        if (window.confirm('¿Deseas quitar este ítem de la venta?')) remove();
+        return;
+    }
+
+    Swal.fire({
+        icon: 'warning',
+        title: '¿Quitar este ítem?',
+        text: 'El producto o servicio será eliminado de la venta actual.',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, quitar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#b91c1c',
+        cancelButtonColor: '#6b7280',
+        reverseButtons: true,
+    }).then(result => {
+        if (result.isConfirmed) remove();
+    });
 }
 function findProductRow(productId) {
     return Array.from(document.querySelectorAll('#items .form-grid')).find(row => {

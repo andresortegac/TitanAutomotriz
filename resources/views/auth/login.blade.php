@@ -110,6 +110,15 @@
         font-weight: 800;
         cursor: pointer;
         box-shadow: 0 14px 28px rgba(216, 15, 23, .28);
+        transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+    }
+    .login-button:hover {
+        transform: translateY(-2px);
+        filter: brightness(1.08);
+        box-shadow: 0 18px 32px rgba(216, 15, 23, .38);
+    }
+    .login-button:active {
+        transform: translateY(0);
     }
     .login-divider {
         display: flex;

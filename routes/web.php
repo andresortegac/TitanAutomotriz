@@ -29,6 +29,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/customers/municipalities/search', [CustomerController::class, 'municipalities'])->name('customers.municipalities');
     Route::get('/products/images/{path}', [ProductController::class, 'image'])->where('path', '.*')->name('products.image');
     Route::get('/products/lookup', ProductLookupController::class)->name('products.lookup');
+    Route::get('/products/{product}/barcode-label', [ProductController::class, 'barcodeLabel'])->name('products.barcode-label');
     Route::resource('products', ProductController::class)->only(['index']);
     Route::resource('services', ServiceController::class)->only(['index']);
 

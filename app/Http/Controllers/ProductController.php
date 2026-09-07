@@ -40,6 +40,14 @@ class ProductController extends Controller
             ->header('Content-Type', Storage::disk('public')->mimeType($path) ?? 'application/octet-stream');
     }
 
+    public function barcodeLabel(Product $product)
+    {
+        $product->load('primaryBarcode');
+        abort_unless($product->primaryBarcode?->code, 404, 'Este producto no tiene un código de barras para imprimir.');
+
+        return view('products.barcode-label', compact('product'));
+    }
+
     public function create()
     {
         return view('products.create', $this->formData());
