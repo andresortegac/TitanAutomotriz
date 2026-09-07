@@ -35,6 +35,31 @@
     </div>
     <div class="actions" style="margin-top:16px;"><button class="btn">Registrar venta</button><a class="btn light" href="{{ route('sales.index') }}">Cancelar</a></div>
 </form>
+<style>
+    .sale-item-grid {
+        grid-template-columns:minmax(0, 1fr) minmax(110px, 150px) 42px;
+        align-items:end;
+    }
+    .sale-item-remove {
+        width:42px;
+        min-height:42px;
+        padding:0;
+    }
+    .sale-item-remove svg {
+        width:18px;
+        height:18px;
+        fill:none;
+        stroke:currentColor;
+        stroke-linecap:round;
+        stroke-linejoin:round;
+        stroke-width:2;
+    }
+    @media (max-width: 900px) {
+        .sale-item-grid {
+            grid-template-columns:minmax(0, 1fr) minmax(100px, 130px) 42px;
+        }
+    }
+</style>
 <script>
 let products = @json($productOptions);
 let services = @json($serviceOptions);
@@ -50,8 +75,8 @@ function serviceLabel(service) {
 }
 function addItem(productId = '') {
     const row = document.createElement('div');
-    row.className = 'form-grid';
-    row.innerHTML = `<input type="hidden" name="items[${index}][item_type]" value="product"><label>Producto<select name="items[${index}][product_id]" onchange="calculate()" required><option value="">Seleccione</option>${products.map(p => `<option value="${p.id}" data-price="${p.price}" data-tax-rate="${p.tax_rate || 0}" data-stock="${p.stock}" ${String(p.id) === String(productId) ? 'selected' : ''}>${productLabel(p)}</option>`).join('')}</select></label><label>Cantidad<input type="number" min="1" name="items[${index}][quantity]" value="1" oninput="calculate()" required></label><button class="btn danger" type="button" onclick="this.parentElement.remove();calculate()">Quitar</button>`;
+    row.className = 'form-grid sale-item-grid';
+    row.innerHTML = `<input type="hidden" name="items[${index}][item_type]" value="product"><label>Producto<select name="items[${index}][product_id]" onchange="calculate()" required><option value="">Seleccione</option>${products.map(p => `<option value="${p.id}" data-price="${p.price}" data-tax-rate="${p.tax_rate || 0}" data-stock="${p.stock}" ${String(p.id) === String(productId) ? 'selected' : ''}>${productLabel(p)}</option>`).join('')}</select></label><label>Cantidad<input type="number" min="1" name="items[${index}][quantity]" value="1" oninput="calculate()" required></label><button class="btn danger sale-item-remove" type="button" onclick="this.parentElement.remove();calculate()" aria-label="Quitar producto" title="Quitar producto"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M9 7l1-2h4l1 2m-8 0 1 13h8l1-13"/></svg></button>`;
     document.getElementById('items').appendChild(row);
     index++;
     calculate();
@@ -59,8 +84,8 @@ function addItem(productId = '') {
 }
 function addServiceItem(serviceId = '') {
     const row = document.createElement('div');
-    row.className = 'form-grid';
-    row.innerHTML = `<input type="hidden" name="items[${index}][item_type]" value="service"><label>Servicio<select name="items[${index}][service_id]" onchange="calculate()" required><option value="">Seleccione</option>${services.map(s => `<option value="${s.id}" data-price="${s.price}" data-tax-rate="${s.tax_rate || 0}" ${String(s.id) === String(serviceId) ? 'selected' : ''}>${serviceLabel(s)}</option>`).join('')}</select></label><label>Cantidad<input type="number" min="1" name="items[${index}][quantity]" value="1" oninput="calculate()" required></label><button class="btn danger" type="button" onclick="this.parentElement.remove();calculate()">Quitar</button>`;
+    row.className = 'form-grid sale-item-grid';
+    row.innerHTML = `<input type="hidden" name="items[${index}][item_type]" value="service"><label>Servicio<select name="items[${index}][service_id]" onchange="calculate()" required><option value="">Seleccione</option>${services.map(s => `<option value="${s.id}" data-price="${s.price}" data-tax-rate="${s.tax_rate || 0}" ${String(s.id) === String(serviceId) ? 'selected' : ''}>${serviceLabel(s)}</option>`).join('')}</select></label><label>Cantidad<input type="number" min="1" name="items[${index}][quantity]" value="1" oninput="calculate()" required></label><button class="btn danger sale-item-remove" type="button" onclick="this.parentElement.remove();calculate()" aria-label="Quitar servicio" title="Quitar servicio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M9 7l1-2h4l1 2m-8 0 1 13h8l1-13"/></svg></button>`;
     document.getElementById('items').appendChild(row);
     index++;
     calculate();
@@ -126,6 +151,26 @@ function findProductRow(productId) {
         return String(row.querySelector('select').value) === String(productId);
     });
 }
+function findEmptyProductRow() {
+    return Array.from(document.querySelectorAll('#items .form-grid')).find(row => {
+        return row.querySelector('input[type="hidden"]').value === 'product'
+            && ! row.querySelector('select').value;
+    });
+}
+function selectProductInRow(row, product) {
+    const select = row.querySelector('select');
+    let option = Array.from(select.options).find(item => String(item.value) === String(product.id));
+
+    if (! option) {
+        option = new Option(productLabel(product), product.id);
+        option.dataset.price = product.price;
+        option.dataset.taxRate = product.tax_rate || 0;
+        option.dataset.stock = product.stock;
+        select.add(option);
+    }
+
+    select.value = String(product.id);
+}
 function quantityInCart(productId) {
     return Array.from(document.querySelectorAll('#items .form-grid')).reduce((total, row) => {
         if (row.querySelector('input[type="hidden"]').value !== 'product') {
@@ -174,7 +219,13 @@ async function scanProduct(code) {
             const quantityInput = existingRow.querySelector('input[type="number"]');
             quantityInput.value = parseInt(quantityInput.value || '0', 10) + 1;
         } else {
-            addItem(product.id);
+            const emptyRow = findEmptyProductRow();
+
+            if (emptyRow) {
+                selectProductInRow(emptyRow, product);
+            } else {
+                addItem(product.id);
+            }
         }
 
         calculate();
