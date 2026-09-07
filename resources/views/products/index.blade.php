@@ -30,7 +30,7 @@
         background: #f8fafc;
     }
 </style>
-<div class="actions" style="justify-content:space-between;margin-bottom:14px;"><h1>Productos</h1>@if(auth()->user()->isAdmin())<a class="btn" href="{{ route('products.create') }}">Nuevo producto</a>@endif</div>
+<div class="actions" style="justify-content:space-between;margin-bottom:14px;"><h1>Productos</h1>@if(auth()->user()->isAdmin())<div class="actions"><a class="btn light" href="{{ route('products.import.create') }}">Cargue masivo</a><a class="btn" href="{{ route('products.create') }}">Nuevo producto</a></div>@endif</div>
 <form class="actions" method="get" style="margin-bottom:14px;"><input name="search" placeholder="Buscar por nombre, codigo, SKU o barras" value="{{ request('search') }}" style="max-width:360px;"><button class="btn light">Buscar</button></form>
 <div class="table-responsive"><table><thead><tr><th>Imagen</th><th>Codigo</th><th>SKU</th><th>Barras</th><th>Producto</th><th>Categoria</th><th>Stock</th><th>Precio</th><th>IVA</th><th></th></tr></thead><tbody>
 @forelse($products as $product)

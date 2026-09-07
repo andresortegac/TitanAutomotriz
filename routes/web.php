@@ -7,6 +7,7 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProductImportController;
 use App\Http\Controllers\ProductLookupController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\ServiceController;
@@ -34,6 +35,9 @@ Route::middleware('auth')->group(function () {
     Route::resource('services', ServiceController::class)->only(['index']);
 
     Route::middleware('role:admin')->group(function () {
+        Route::get('/products/import', [ProductImportController::class, 'create'])->name('products.import.create');
+        Route::post('/products/import', [ProductImportController::class, 'store'])->name('products.import.store');
+        Route::get('/products/import/template', [ProductImportController::class, 'template'])->name('products.import.template');
         Route::delete('/sales/{sale}', [SaleController::class, 'destroy'])->name('sales.destroy');
         Route::get('/credits', [CreditController::class, 'index'])->name('credits.index');
         Route::get('/credits/{sale}/payment', [CreditController::class, 'payment'])->name('credits.payment');
