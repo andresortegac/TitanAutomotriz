@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Product;
-use App\Models\Supplier;
 use App\Services\BarcodeService;
 use App\Services\ProductBarcodeService;
 use Illuminate\Http\Request;
@@ -17,27 +16,28 @@ class ProductImportController extends Controller
 {
     public function create()
     {
-        return view('products.import', [
-            'categories' => Category::where('active', true)->orderBy('name')->get(),
-            'suppliers' => Supplier::where('active', true)->orderBy('name')->get(),
-        ]);
+        return view('products.import');
     }
 
     public function store(Request $request)
     {
-        $data = $request->validate([
+        $request->validate([
             'file' => ['required', 'file', 'max:10240', 'mimes:xlsx,csv,txt'],
-            'category_id' => ['required', 'exists:categories,id'],
-            'supplier_id' => ['nullable', 'exists:suppliers,id'],
-            'min_stock' => ['required', 'integer', 'min:0'],
-            'markup' => ['required', 'numeric', 'min:0', 'max:1000'],
         ]);
 
         $rows = $this->rowsFromFile($request->file('file')->getRealPath(), $request->file('file')->getClientOriginalExtension());
-        $products = $this->prepareProducts($rows, $data);
+        $products = $this->prepareProducts($rows);
 
         DB::transaction(function () use ($products): void {
+            $categories = [];
             foreach ($products as $attributes) {
+                $categoryName = $attributes['category_name'];
+                if (! isset($categories[Str::lower($categoryName)])) {
+                    $categories[Str::lower($categoryName)] = Category::whereRaw('LOWER(name) = ?', [Str::lower($categoryName)])->first()
+                        ?? Category::create(['name' => $categoryName, 'active' => true]);
+                }
+                $attributes['category_id'] = $categories[Str::lower($categoryName)]->id;
+                unset($attributes['category_name']);
                 $product = Product::create($attributes);
                 $product->update(['sku' => app(BarcodeService::class)->generateSku($product)]);
                 app(ProductBarcodeService::class)->syncPrimaryBarcode($product, null, 'CODE128', auth()->id());
@@ -49,7 +49,7 @@ class ProductImportController extends Controller
 
     public function template()
     {
-        $content = "Item;Código;Descripción;Unidad;Cantidad;Valor Unitario;% Dscto;% IVA\r\n1;REF-001;Producto de ejemplo;und;10;25000;0%;19%\r\n";
+        $content = "Item;Código;Descripción;Unidad;Cantidad;Valor Unitario;Precio de Venta;% Dscto;% IVA;Valor IVA;Total;Categoría;Stock Mínimo\r\n1;REF-001;Producto de ejemplo;und;10;25000;35000;0%;19%;47500;250000;MOTO;5\r\n";
 
         return response($content, 200, [
             'Content-Type' => 'text/csv; charset=UTF-8',
@@ -57,7 +57,7 @@ class ProductImportController extends Controller
         ]);
     }
 
-    private function prepareProducts(array $rows, array $defaults): array
+    private function prepareProducts(array $rows): array
     {
         if (count($rows) < 2) {
             throw ValidationException::withMessages(['file' => 'El archivo no contiene productos para importar.']);
@@ -65,7 +65,7 @@ class ProductImportController extends Controller
 
         $headers = array_map(fn ($header) => $this->header($header), array_shift($rows));
         $columns = array_flip($headers);
-        foreach (['codigo', 'descripcion', 'cantidad', 'valorunitario'] as $required) {
+        foreach (['codigo', 'descripcion', 'cantidad', 'valorunitario', 'categoria', 'stockminimo'] as $required) {
             if (! array_key_exists($required, $columns)) {
                 throw ValidationException::withMessages(['file' => "Falta la columna requerida: {$required}."]);
             }
@@ -82,10 +82,13 @@ class ProductImportController extends Controller
             $code = trim((string) ($row[$columns['codigo']] ?? ''));
             $name = trim((string) ($row[$columns['descripcion']] ?? ''));
             $stock = $this->number($row[$columns['cantidad']] ?? null);
-            $price = $this->number($row[$columns['valorunitario']] ?? null);
+            $cost = $this->number($row[$columns['valorunitario']] ?? null);
+            $salePrice = array_key_exists('precioventa', $columns) ? $this->number($row[$columns['precioventa']] ?? null) : null;
             $tax = array_key_exists('iva', $columns) ? $this->number($row[$columns['iva']] ?? 0) : 0;
+            $category = trim((string) ($row[$columns['categoria']] ?? ''));
+            $minStock = $this->number($row[$columns['stockminimo']] ?? null);
 
-            if ($code === '' || $name === '' || $stock === null || $stock < 0 || floor($stock) !== $stock || $price === null || $price < 0 || $tax === null || $tax < 0 || $tax > 100) {
+            if ($code === '' || $name === '' || $category === '' || $stock === null || $stock < 0 || floor($stock) !== $stock || $minStock === null || $minStock < 0 || floor($minStock) !== $minStock || $cost === null || $cost < 0 || $salePrice !== null && $salePrice < 0 || $tax === null || $tax < 0 || $tax > 100) {
                 throw ValidationException::withMessages(['file' => "La fila {$line} tiene datos incompletos o inválidos. Código, descripción, cantidad y valor unitario son obligatorios."]);
             }
             if (isset($codes[Str::lower($code)]) || Product::where('code', $code)->exists()) {
@@ -94,16 +97,16 @@ class ProductImportController extends Controller
 
             $codes[Str::lower($code)] = true;
             $products[] = [
-                'category_id' => $defaults['category_id'],
-                'supplier_id' => $defaults['supplier_id'] ?? null,
+                'category_name' => $category,
+                'supplier_id' => null,
                 'code' => $code,
                 'name' => $name,
                 'description' => $name,
-                'purchase_price' => $price,
-                'sale_price' => round($price * (1 + ((float) $defaults['markup'] / 100)), 2),
+                'purchase_price' => $cost,
+                'sale_price' => $salePrice,
                 'tax_rate' => $tax,
                 'stock' => (int) $stock,
-                'min_stock' => $defaults['min_stock'],
+                'min_stock' => (int) $minStock,
                 'active' => true,
             ];
         }
@@ -182,7 +185,10 @@ class ProductImportController extends Controller
             'descripcion', 'nombre', 'producto' => 'descripcion',
             'cantidad', 'stock' => 'cantidad',
             'valorunitario', 'precio', 'preciounitario', 'valor' => 'valorunitario',
+            'precioventa', 'preciodeventa', 'venta' => 'precioventa',
             'iva', 'porcentajeiva' => 'iva',
+            'categoria', 'category' => 'categoria',
+            'stockminimo', 'minstock', 'existenciaminima' => 'stockminimo',
             default => $value,
         };
     }

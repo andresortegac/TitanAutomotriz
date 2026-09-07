@@ -21,7 +21,7 @@ class SaleController extends Controller
 
     public function create()
     {
-        $products = Product::with('primaryBarcode')->where('active', true)->where('stock', '>', 0)->orderBy('name')->get();
+        $products = Product::with('primaryBarcode')->where('active', true)->where('stock', '>', 0)->whereNotNull('sale_price')->orderBy('name')->get();
         $services = Service::where('active', true)->orderBy('name')->get();
 
         return view('sales.create', [

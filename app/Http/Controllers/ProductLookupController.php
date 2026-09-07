@@ -20,6 +20,7 @@ class ProductLookupController extends Controller
 
         $product = Product::with('primaryBarcode')
             ->where('active', true)
+            ->whereNotNull('sale_price')
             ->where(function ($query) use ($search): void {
                 $query->where('code', $search)
                     ->orWhere('sku', $search)
