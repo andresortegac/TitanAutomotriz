@@ -93,6 +93,10 @@ class ProductImportController extends Controller
             $cost = $this->number($row[$columns['valorunitario']] ?? null);
             $salePrice = array_key_exists('precioventa', $columns) ? $this->number($row[$columns['precioventa']] ?? null) : null;
             $tax = array_key_exists('iva', $columns) ? $this->number($row[$columns['iva']] ?? 0) : 0;
+            // Excel stores a percentage such as 19% as the numeric value 0.19.
+            if ($tax !== null && $tax > 0 && $tax <= 1) {
+                $tax *= 100;
+            }
             $category = trim((string) ($row[$columns['categoria']] ?? ''));
             $minStock = $this->number($row[$columns['stockminimo']] ?? null);
 
@@ -156,8 +160,9 @@ class ProductImportController extends Controller
         $shared = [];
         if ($sharedXml) {
             $xml = simplexml_load_string($sharedXml);
-            foreach ($xml->si as $item) {
-                $shared[] = trim(implode('', $item->xpath('.//t')));
+            $xml->registerXPathNamespace('x', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+            foreach ($xml->xpath('//x:si') ?: [] as $item) {
+                $shared[] = trim(implode('', array_map('strval', $item->xpath('.//x:t') ?: [])));
             }
         }
         $xml = simplexml_load_string($sheetXml);
@@ -165,15 +170,15 @@ class ProductImportController extends Controller
         $rows = [];
         foreach ($xml->xpath('//x:sheetData/x:row') as $row) {
             $values = [];
-            foreach ($row->c as $cell) {
+            foreach ($row->xpath('./x:c') ?: [] as $cell) {
                 preg_match('/[A-Z]+/', (string) $cell['r'], $match);
                 $column = $this->columnNumber($match[0] ?? 'A');
-                $value = (string) $cell->v;
+                $value = (string) ($cell->xpath('./x:v')[0] ?? '');
                 $type = (string) $cell['t'];
                 if ($type === 's') {
                     $value = $shared[(int) $value] ?? '';
                 } elseif ($type === 'inlineStr') {
-                    $value = (string) $cell->is->t;
+                    $value = implode('', array_map('strval', $cell->xpath('./x:is//x:t') ?: []));
                 }
                 $values[$column] = $value;
             }
