@@ -80,7 +80,6 @@ class ProductImportController extends Controller
         }
 
         $products = [];
-        $codes = [];
         foreach ($rows as $index => $row) {
             if (! array_filter($row, fn ($value) => filled($value))) {
                 continue;
@@ -103,11 +102,6 @@ class ProductImportController extends Controller
             if ($code === '' || $name === '' || $category === '' || $stock === null || $stock < 0 || floor($stock) !== $stock || $minStock === null || $minStock < 0 || floor($minStock) !== $minStock || $cost === null || $cost < 0 || $salePrice !== null && $salePrice < 0 || $tax === null || $tax < 0 || $tax > 100) {
                 throw ValidationException::withMessages(['file' => "La fila {$line} tiene datos incompletos o inválidos. Código, descripción, cantidad y valor unitario son obligatorios."]);
             }
-            if (isset($codes[Str::lower($code)]) || Product::where('code', $code)->exists()) {
-                throw ValidationException::withMessages(['file' => "El código '{$code}' de la fila {$line} ya existe o está repetido en el archivo."]);
-            }
-
-            $codes[Str::lower($code)] = true;
             $products[] = [
                 'category_name' => $category,
                 'supplier_id' => null,
@@ -162,6 +156,7 @@ class ProductImportController extends Controller
             $xml = simplexml_load_string($sharedXml);
             $xml->registerXPathNamespace('x', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
             foreach ($xml->xpath('//x:si') ?: [] as $item) {
+                $item->registerXPathNamespace('x', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
                 $shared[] = trim(implode('', array_map('strval', $item->xpath('.//x:t') ?: [])));
             }
         }
@@ -170,7 +165,9 @@ class ProductImportController extends Controller
         $rows = [];
         foreach ($xml->xpath('//x:sheetData/x:row') as $row) {
             $values = [];
+            $row->registerXPathNamespace('x', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
             foreach ($row->xpath('./x:c') ?: [] as $cell) {
+                $cell->registerXPathNamespace('x', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
                 preg_match('/[A-Z]+/', (string) $cell['r'], $match);
                 $column = $this->columnNumber($match[0] ?? 'A');
                 $value = (string) ($cell->xpath('./x:v')[0] ?? '');
