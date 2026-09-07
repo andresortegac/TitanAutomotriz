@@ -60,7 +60,9 @@ class ProductImportController extends Controller
         $zip->addFromString('xl/worksheets/sheet1.xml', $this->xlsxSheet());
         $zip->close();
 
-        return response()->download($path, 'plantilla-productos.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')->deleteFileAfterSend(true);
+        return response()->download($path, 'plantilla-productos.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
     }
 
     private function prepareProducts(array $rows): array
@@ -243,7 +245,10 @@ class ProductImportController extends Controller
 
     private function xlsxSheet(): string
     {
-        $headers = ['Item', 'Código', 'Descripción', 'Unidad', 'Cantidad', 'Valor Unitario (Costo)', '% Dscto', '% IVA', 'Valor IVA', 'Total', 'CATEGORIA', 'STOCK MINIMO', 'Valor Unitario (Venta)'];
+        // The template contains only the fields that the importer accepts.
+        // Each label is written to an individual XLSX cell below, so Excel
+        // renders them as separate columns rather than one combined value.
+        $headers = ['Código', 'Descripción', 'Cantidad', 'Valor Unitario (Costo)', 'Precio de Venta', '% IVA', 'Categoría', 'Stock Mínimo'];
         $cells = [];
         foreach ($headers as $index => $header) {
             $column = chr(65 + $index);
