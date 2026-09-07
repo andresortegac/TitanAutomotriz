@@ -7,8 +7,8 @@
     <div class="form-grid">
         <label>Tipo de factura<select name="invoice_type" id="invoiceType" required onchange="toggleInvoiceType()"><option value="normal" @selected(old('invoice_type') === 'normal')>Factura normal</option><option value="electronica" @selected(old('invoice_type') === 'electronica')>Factura electrónica</option></select></label>
         <label>Cliente<select name="customer_id" id="customerId"><option value="">Consumidor final</option>@foreach($customers as $customer)<option value="{{ $customer->id }}" @selected(old('customer_id') == $customer->id)>{{ $customer->name }} {{ $customer->document ? '- '.$customer->document : '' }}</option>@endforeach</select></label>
-        <label>Metodo de pago<select name="payment_method" id="paymentMethod" required onchange="toggleCreditFields();calculate()"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="tarjeta">Tarjeta</option><option value="mixto">Mixto</option><option value="credito">Credito</option></select></label>
-        <label id="creditDueField" style="display:none;">Fecha vencimiento credito<input type="date" name="credit_due_date" id="creditDueDate" value="{{ now()->addDays(30)->format('Y-m-d') }}"></label>
+        <label>Metodo de pago<select name="payment_method" id="paymentMethod" required onchange="toggleCreditFields();calculate()"><option value="efectivo" @selected(old('payment_method', 'efectivo') === 'efectivo')>Efectivo</option><option value="transferencia" @selected(old('payment_method') === 'transferencia')>Transferencia</option><option value="tarjeta" @selected(old('payment_method') === 'tarjeta')>Tarjeta</option><option value="mixto" @selected(old('payment_method') === 'mixto')>Mixto</option><option value="credito" @selected(old('payment_method') === 'credito')>Credito</option></select></label>
+        <label id="creditDueField" style="display:none;">Fecha vencimiento credito<input type="date" name="credit_due_date" id="creditDueDate" value="{{ old('credit_due_date', now()->addDays(30)->format('Y-m-d')) }}"></label>
     </div>
     <p class="muted" id="electronicNotice" style="display:none;margin-top:10px;">La factura electrónica se enviará a Factus. El cliente es obligatorio y debe tener sus datos fiscales completos.</p>
     <div class="panel" style="margin-top:18px;background:#111;color:#fff;border-color:#ef1d25;">
@@ -24,8 +24,8 @@
         <button class="btn secondary" type="button" onclick="addServiceItem()">Agregar servicio</button>
     </div>
     <div class="form-grid" style="margin-top:18px;">
-        <label>Descuento<input type="number" step="0.01" min="0" name="discount" id="discount" value="0" oninput="calculate()"></label>
-        <label>Valor pagado<input type="number" step="0.01" min="0" name="paid_amount" id="paid" value="0" oninput="calculate()" required></label>
+        <label>Descuento<input type="number" step="0.01" min="0" name="discount" id="discount" value="{{ old('discount', 0) }}" oninput="calculate()"></label>
+        <label>Valor pagado<input type="number" step="0.01" min="0" name="paid_amount" id="paid" value="{{ old('paid_amount', 0) }}" oninput="calculate()" required></label>
     </div>
     <div class="grid grid-4" style="margin-top:16px;">
         <div class="panel"><div class="muted">Subtotal</div><div class="metric" id="subtotal">$0</div></div>
@@ -37,7 +37,7 @@
 </form>
 <style>
     .sale-item-grid {
-        grid-template-columns:minmax(0, 1fr) minmax(110px, 150px) 42px;
+        grid-template-columns:minmax(0, 1fr) minmax(120px, 150px) minmax(100px, 120px) 42px;
         align-items:end;
     }
     .sale-item-remove {
@@ -56,13 +56,22 @@
     }
     @media (max-width: 900px) {
         .sale-item-grid {
-            grid-template-columns:minmax(0, 1fr) minmax(100px, 130px) 42px;
+            grid-template-columns:minmax(0, 1fr) minmax(110px, 130px) minmax(90px, 110px) 42px;
+        }
+    }
+    @media (max-width: 560px) {
+        .sale-item-grid {
+            grid-template-columns:minmax(0, 1fr) minmax(0, 1fr) 42px;
+        }
+        .sale-item-grid > label:first-of-type {
+            grid-column:1 / -1;
         }
     }
 </style>
 <script>
 let products = @json($productOptions);
 let services = @json($serviceOptions);
+const oldItems = @json(old('items', []));
 let index = 0;
 let paidAmountEdited = false;
 function money(value) { return '$' + Math.round(value).toLocaleString('es-CO'); }
@@ -73,19 +82,29 @@ function productLabel(product) {
 function serviceLabel(service) {
     return `${service.code} - ${service.name} ($${Math.round(service.price).toLocaleString('es-CO')}, IVA ${Number(service.tax_rate || 0).toLocaleString('es-CO')}%)`;
 }
-function addItem(productId = '') {
+function defaultPrice(items, itemId) {
+    return items.find(item => String(item.id) === String(itemId))?.price || 0;
+}
+function syncRowPrice(select) {
+    const priceInput = select.closest('.form-grid').querySelector('[data-unit-price]');
+    priceInput.value = select.selectedOptions[0]?.dataset.price || 0;
+    calculate();
+}
+function addItem(productId = '', unitPrice = null, quantity = 1) {
     const row = document.createElement('div');
     row.className = 'form-grid sale-item-grid';
-    row.innerHTML = `<input type="hidden" name="items[${index}][item_type]" value="product"><label>Producto<select name="items[${index}][product_id]" onchange="calculate()" required><option value="">Seleccione</option>${products.map(p => `<option value="${p.id}" data-price="${p.price}" data-tax-rate="${p.tax_rate || 0}" data-stock="${p.stock}" ${String(p.id) === String(productId) ? 'selected' : ''}>${productLabel(p)}</option>`).join('')}</select></label><label>Cantidad<input type="number" min="1" name="items[${index}][quantity]" value="1" oninput="calculate()" required></label><button class="btn danger sale-item-remove" type="button" onclick="this.parentElement.remove();calculate()" aria-label="Quitar producto" title="Quitar producto"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M9 7l1-2h4l1 2m-8 0 1 13h8l1-13"/></svg></button>`;
+    const price = unitPrice ?? defaultPrice(products, productId);
+    row.innerHTML = `<input type="hidden" name="items[${index}][item_type]" value="product"><label>Producto<select name="items[${index}][product_id]" onchange="syncRowPrice(this)" required><option value="">Seleccione</option>${products.map(p => `<option value="${p.id}" data-price="${p.price}" data-tax-rate="${p.tax_rate || 0}" data-stock="${p.stock}" ${String(p.id) === String(productId) ? 'selected' : ''}>${productLabel(p)}</option>`).join('')}</select></label><label>Precio unitario<input data-unit-price type="number" step="0.01" min="0.01" name="items[${index}][unit_price]" value="${price}" oninput="calculate()" required></label><label>Cantidad<input data-quantity type="number" min="1" name="items[${index}][quantity]" value="${quantity}" oninput="calculate()" required></label><button class="btn danger sale-item-remove" type="button" onclick="this.parentElement.remove();calculate()" aria-label="Quitar producto" title="Quitar producto"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M9 7l1-2h4l1 2m-8 0 1 13h8l1-13"/></svg></button>`;
     document.getElementById('items').appendChild(row);
     index++;
     calculate();
     return row;
 }
-function addServiceItem(serviceId = '') {
+function addServiceItem(serviceId = '', unitPrice = null, quantity = 1) {
     const row = document.createElement('div');
     row.className = 'form-grid sale-item-grid';
-    row.innerHTML = `<input type="hidden" name="items[${index}][item_type]" value="service"><label>Servicio<select name="items[${index}][service_id]" onchange="calculate()" required><option value="">Seleccione</option>${services.map(s => `<option value="${s.id}" data-price="${s.price}" data-tax-rate="${s.tax_rate || 0}" ${String(s.id) === String(serviceId) ? 'selected' : ''}>${serviceLabel(s)}</option>`).join('')}</select></label><label>Cantidad<input type="number" min="1" name="items[${index}][quantity]" value="1" oninput="calculate()" required></label><button class="btn danger sale-item-remove" type="button" onclick="this.parentElement.remove();calculate()" aria-label="Quitar servicio" title="Quitar servicio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M9 7l1-2h4l1 2m-8 0 1 13h8l1-13"/></svg></button>`;
+    const price = unitPrice ?? defaultPrice(services, serviceId);
+    row.innerHTML = `<input type="hidden" name="items[${index}][item_type]" value="service"><label>Servicio<select name="items[${index}][service_id]" onchange="syncRowPrice(this)" required><option value="">Seleccione</option>${services.map(s => `<option value="${s.id}" data-price="${s.price}" data-tax-rate="${s.tax_rate || 0}" ${String(s.id) === String(serviceId) ? 'selected' : ''}>${serviceLabel(s)}</option>`).join('')}</select></label><label>Precio unitario<input data-unit-price type="number" step="0.01" min="0.01" name="items[${index}][unit_price]" value="${price}" oninput="calculate()" required></label><label>Cantidad<input data-quantity type="number" min="1" name="items[${index}][quantity]" value="${quantity}" oninput="calculate()" required></label><button class="btn danger sale-item-remove" type="button" onclick="this.parentElement.remove();calculate()" aria-label="Quitar servicio" title="Quitar servicio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M9 7l1-2h4l1 2m-8 0 1 13h8l1-13"/></svg></button>`;
     document.getElementById('items').appendChild(row);
     index++;
     calculate();
@@ -96,8 +115,8 @@ function calculate() {
     let tax = 0;
     document.querySelectorAll('#items .form-grid').forEach(row => {
         const select = row.querySelector('select');
-        const quantity = parseInt(row.querySelector('input[type="number"]').value || '0', 10);
-        const price = parseFloat(select.selectedOptions[0]?.dataset.price || '0');
+        const quantity = parseInt(row.querySelector('[data-quantity]').value || '0', 10);
+        const price = parseFloat(row.querySelector('[data-unit-price]').value || '0');
         const taxRate = parseFloat(select.selectedOptions[0]?.dataset.taxRate || '0');
         subtotal += price * quantity;
         tax += (price * quantity) * (taxRate / 100);
@@ -170,6 +189,7 @@ function selectProductInRow(row, product) {
     }
 
     select.value = String(product.id);
+    syncRowPrice(select);
 }
 function quantityInCart(productId) {
     return Array.from(document.querySelectorAll('#items .form-grid')).reduce((total, row) => {
@@ -181,7 +201,7 @@ function quantityInCart(productId) {
             return total;
         }
 
-        return total + parseInt(row.querySelector('input[type="number"]').value || '0', 10);
+        return total + parseInt(row.querySelector('[data-quantity]').value || '0', 10);
     }, 0);
 }
 function upsertProductOption(product) {
@@ -216,7 +236,7 @@ async function scanProduct(code) {
         const existingRow = findProductRow(product.id);
 
         if (existingRow) {
-            const quantityInput = existingRow.querySelector('input[type="number"]');
+            const quantityInput = existingRow.querySelector('[data-quantity]');
             quantityInput.value = parseInt(quantityInput.value || '0', 10) + 1;
         } else {
             const emptyRow = findEmptyProductRow();
@@ -248,7 +268,28 @@ document.getElementById('barcodeInput').focus();
 document.getElementById('paid').addEventListener('input', () => {
     paidAmountEdited = true;
 });
-addItem();
+document.getElementById('saleForm').addEventListener('submit', function (event) {
+    const invalidPrice = Array.from(document.querySelectorAll('[data-unit-price]')).find(input => {
+        return ! input.value || parseFloat(input.value) <= 0;
+    });
+
+    if (invalidPrice) {
+        event.preventDefault();
+        setScanMessage('Corrige el precio unitario: debe ser mayor que cero.', 'error');
+        invalidPrice.focus();
+    }
+});
+if (oldItems.length) {
+    oldItems.forEach(item => {
+        if (item.item_type === 'service') {
+            addServiceItem(item.service_id || '', item.unit_price ?? null, item.quantity || 1);
+        } else {
+            addItem(item.product_id || '', item.unit_price ?? null, item.quantity || 1);
+        }
+    });
+} else {
+    addItem();
+}
 toggleCreditFields();
 toggleInvoiceType();
 </script>

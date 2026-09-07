@@ -61,6 +61,7 @@ class SaleController extends Controller
             'items.*.product_id' => ['nullable', 'exists:products,id'],
             'items.*.service_id' => ['nullable', 'exists:services,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
+            'items.*.unit_price' => ['required', 'numeric', 'min:0.01'],
         ], [
             'invoice_type.required' => 'Selecciona el tipo de factura.',
             'payment_method.required' => 'Selecciona el método de pago.',
@@ -74,6 +75,9 @@ class SaleController extends Controller
             'items.*.service_id.exists' => 'Uno de los servicios seleccionados ya no está disponible.',
             'items.*.quantity.required' => 'Indica la cantidad de cada producto o servicio.',
             'items.*.quantity.min' => 'La cantidad debe ser como mínimo 1.',
+            'items.*.unit_price.required' => 'Indica el precio unitario de cada producto o servicio.',
+            'items.*.unit_price.numeric' => 'El precio unitario debe ser un número válido.',
+            'items.*.unit_price.min' => 'El precio unitario debe ser mayor que cero.',
         ]);
 
         $discount = (float) ($data['discount'] ?? 0);
@@ -112,7 +116,7 @@ class SaleController extends Controller
                         }
 
                         $lineName = $product->name;
-                        $unitPrice = (float) $product->sale_price;
+                        $unitPrice = (float) $item['unit_price'];
                         $taxRate = (float) $product->tax_rate;
                         $productId = $product->id;
                         $serviceId = null;
@@ -128,7 +132,7 @@ class SaleController extends Controller
                         }
 
                         $lineName = $service->name;
-                        $unitPrice = (float) $service->sale_price;
+                        $unitPrice = (float) $item['unit_price'];
                         $taxRate = (float) $service->tax_rate;
                         $productId = null;
                         $serviceId = $service->id;
