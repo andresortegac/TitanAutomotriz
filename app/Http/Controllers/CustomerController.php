@@ -100,7 +100,7 @@ class CustomerController extends Controller
 
     private function validated(Request $request): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'document' => ['nullable', 'string', 'max:80'],
             'phone' => ['nullable', 'string', 'max:50'],
