@@ -30,7 +30,7 @@
         background: #f8fafc;
     }
 </style>
-<div class="actions" style="justify-content:space-between;margin-bottom:14px;"><h1>Productos</h1>@if(auth()->user()->isAdmin())<div class="actions"><a class="btn light icon-btn" href="{{ route('products.import.create') }}" aria-label="Cargue masivo" title="Cargue masivo"><x-icon name="upload" /></a><a class="btn icon-btn" href="{{ route('products.create') }}" aria-label="Nuevo producto" title="Nuevo producto"><x-icon name="add" /></a></div>@endif</div>
+<div class="actions" style="justify-content:space-between;margin-bottom:14px;"><h1>Productos</h1>@if(auth()->user()->isAdmin())<div class="actions"><a class="btn light" href="{{ route('products.import.create') }}" aria-label="Cargue masivo" title="Cargue masivo"><x-icon name="upload" /> <span>Cargue masivo</span></a><a class="btn" href="{{ route('products.create') }}" aria-label="Nuevo producto" title="Nuevo producto"><x-icon name="add" /> <span>Nuevo producto</span></a></div>@endif</div>
 <form class="actions" method="get" style="margin-bottom:14px;"><input name="search" placeholder="Buscar por nombre, codigo, SKU o barras" value="{{ request('search') }}" style="max-width:360px;"><button class="btn light icon-btn" aria-label="Buscar" title="Buscar"><x-icon name="search" /></button></form>
 <div class="table-responsive"><table><thead><tr><th>Imagen</th><th>Codigo</th><th>SKU</th><th>Barras</th><th>Producto</th><th>Categoria</th><th>Stock</th><th>Precio</th><th>IVA</th><th></th></tr></thead><tbody>
 @forelse($products as $product)
