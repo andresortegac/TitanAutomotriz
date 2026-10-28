@@ -52,7 +52,7 @@ class SaleController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'customer_id' => ['nullable', 'exists:customers,id'],
+            'customer_id' => ['required_if:invoice_type,electronica', 'nullable', 'exists:customers,id'],
             'invoice_type' => ['required', 'in:normal,electronica'],
             'payment_method' => ['required', 'in:efectivo,transferencia,tarjeta,mixto,credito'],
             'credit_due_date' => ['nullable', 'date', 'required_if:payment_method,credito'],
@@ -70,6 +70,8 @@ class SaleController extends Controller
             'items.*.unit_price' => ['required', 'numeric', 'min:0.01'],
         ], [
             'invoice_type.required' => 'Selecciona el tipo de factura.',
+            'customer_id.required_if' => 'Para facturar electrónicamente debes seleccionar un cliente.',
+            'customer_id.exists' => 'El cliente seleccionado no es válido.',
             'payment_method.required' => 'Selecciona el método de pago.',
             'credit_due_date.required_if' => 'Indica la fecha de vencimiento del crédito.',
             'paid_amount.required' => 'Indica el valor pagado.',

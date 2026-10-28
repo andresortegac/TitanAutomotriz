@@ -114,7 +114,7 @@
         <div class="center">
             <p class="title">Titan Automotriz</p>
             <div class="muted">Repuestos de alta calidad</div>
-            <div class="muted">Recibo de venta</div>
+            <div class="muted">{{ $sale->invoice_type === 'electronica' ? 'Factura electrónica' : 'Factura normal' }}</div>
         </div>
 
         <div class="line"></div>
